@@ -32,7 +32,7 @@ export const OrderPlacedSchema = z.object({
 export const PaymentConfirmedSchema = z.object({
   orderId: z.string().uuid(),
   paymentId: z.string().uuid(),
-  amount: z.number(),
+  amount: z.number().int(),
   provider: z.string(),
 });
 
@@ -54,3 +54,5 @@ export const EventSchemas = {
   [Topics.PAYMENT_FAILED]: PaymentFailedSchema,
   [Topics.ORDER_STATUS_CHANGED]: OrderStatusChangedSchema,
 } as const;
+
+export type EventData<T extends TopicName> = z.infer<(typeof EventSchemas)[T]>;

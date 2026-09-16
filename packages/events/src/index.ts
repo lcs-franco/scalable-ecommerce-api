@@ -1,6 +1,7 @@
 export {
   Topics,
   type TopicName,
+  type EventData,
   EventSchemas,
   UserRegisteredSchema,
   OrderPlacedSchema,

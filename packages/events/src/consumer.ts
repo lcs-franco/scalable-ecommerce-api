@@ -1,5 +1,5 @@
 import { Kafka } from "kafkajs";
-import { EventSchemas, type TopicName } from "./schemas.js";
+import { type EventData, EventSchemas, type TopicName } from "./schemas.js";
 
 export function createConsumer(kafka: Kafka, groupId: string) {
   const consumer = kafka.consumer({ groupId });
@@ -7,9 +7,9 @@ export function createConsumer(kafka: Kafka, groupId: string) {
   const connect = () => consumer.connect();
   const disconnect = () => consumer.disconnect();
 
-  const subscribe = async (
-    topic: TopicName,
-    handler: (data: unknown) => Promise<void>,
+  const subscribe = async <Topic extends TopicName>(
+    topic: Topic,
+    handler: (data: EventData<Topic>) => Promise<void>,
   ) => {
     await consumer.subscribe({ topic });
 

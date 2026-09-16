@@ -1,5 +1,5 @@
 import { Kafka } from "kafkajs";
-import { EventSchemas, type TopicName } from "./schemas.js";
+import { EventSchemas, type EventData, type TopicName } from "./schemas.js";
 
 export function createProducer(kafka: Kafka) {
   const producer = kafka.producer();
@@ -7,8 +7,11 @@ export function createProducer(kafka: Kafka) {
   const connect = () => producer.connect();
   const disconnect = () => producer.disconnect();
 
-  const publish = async (topic: TopicName, data: any) => {
-    const parsed = EventSchemas[topic].parse(data);
+  const publish = async <Topic extends TopicName>(
+    topic: Topic,
+    payload: EventData<Topic>,
+  ) => {
+    const parsed = EventSchemas[topic].parse(payload);
 
     await producer.send({
       topic,
