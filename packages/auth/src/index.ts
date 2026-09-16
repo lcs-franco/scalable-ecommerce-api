@@ -8,6 +8,8 @@ export interface TokenPayload {
   role: "user" | "admin";
 }
 
+const ACCESS_TOKEN_EXPIRY = 900; // 15 minutes in seconds
+
 declare module "@fastify/jwt" {
   interface FastifyJWT {
     payload: TokenPayload;
@@ -20,7 +22,7 @@ export const authPlugin = fp(
     const secret = process.env.JWT_SECRET;
     if (!secret) throw new Error("JWT_SECRET env var is required");
 
-    app.register(fjwt, { secret, sign: { expiresIn: 900 } }); // 15min default
+    app.register(fjwt, { secret, sign: { expiresIn: ACCESS_TOKEN_EXPIRY } });
 
     app.addHook("onRequest", async (request, reply) => {
       if ((request.routeOptions.config as any)?.skipAuth) return;
