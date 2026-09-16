@@ -1,0 +1,23 @@
+{
+  "name": "scalable-ecommerce-api",
+  "version": "1.0.0",
+  "description": "Scalable e-commerce microservices platform",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "build": "pnpm -r run build",
+    "lint": "pnpm -r run lint",
+    "test": "pnpm -r run test"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.0"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^11.5.3",
+      "onFail": "download"
+    }
+  }
+}
