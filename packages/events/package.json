@@ -3,7 +3,19 @@
   "version": "0.0.0",
   "type": "module",
   "private": true,
-  "scripts": {},
-  "dependencies": {},
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "kafkajs": "^2.2.4",
+    "zod": "^3.24.0"
+  },
   "devDependencies": {}
 }
