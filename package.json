@@ -11,6 +11,7 @@
     "test": "pnpm -r run test"
   },
   "devDependencies": {
+    "@types/node": "^22.20.2",
     "typescript": "^5.8.0"
   },
   "devEngines": {
