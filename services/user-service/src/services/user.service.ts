@@ -18,7 +18,8 @@ export function createUserService(db: Db) {
 
   async function findById(id: string) {
     const rows = await db.select().from(users).where(eq(users.id, id)).limit(1)
-    return rows[0] ?? null
+    if (!rows[0]) throw new UserNotFound()
+    return rows[0]
   }
 
   async function create(email: string, password: string, name: string) {

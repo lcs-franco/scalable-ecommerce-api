@@ -4,11 +4,7 @@ import type { FastifyInstance } from 'fastify'
 import { createHash, randomUUID } from 'node:crypto'
 import type { Db } from '../db/index.js'
 import { refreshTokens } from '../db/schema.js'
-import {
-  InvalidCredentials,
-  InvalidRefreshToken,
-  UserNotFound,
-} from '../errors/index.js'
+import { InvalidCredentials, InvalidRefreshToken } from '../errors/index.js'
 import { createUserService } from './user.service.js'
 
 const REFRESH_TOKEN_EXPIRY_DAYS = 7
@@ -81,9 +77,6 @@ export function createAuthService(
     await db.delete(refreshTokens).where(eq(refreshTokens.id, stored.id))
 
     const user = await userService.findById(stored.userId)
-    if (!user) {
-      throw new UserNotFound()
-    }
 
     return generateTokens(user)
   }
