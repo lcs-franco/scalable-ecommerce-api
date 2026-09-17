@@ -7,8 +7,8 @@ export interface ICreateLoggerOptions {
   level?: string
 }
 
-export function createLogger(opts: ICreateLoggerOptions): Logger {
-  const config: LoggerOptions = {
+export function getLoggerConfig(opts: ICreateLoggerOptions): LoggerOptions {
+  return {
     name: opts.service,
     level: opts.level ?? process.env.LOG_LEVEL ?? 'info',
     formatters: {
@@ -17,7 +17,13 @@ export function createLogger(opts: ICreateLoggerOptions): Logger {
       },
     },
     timestamp: pino.stdTimeFunctions.isoTime,
+    transport:
+      process.env.NODE_ENV !== 'production'
+        ? { target: 'pino-pretty', options: { colorize: true } }
+        : undefined,
   }
+}
 
-  return pino(config)
+export function createLogger(opts: ICreateLoggerOptions): Logger {
+  return pino(getLoggerConfig(opts))
 }
