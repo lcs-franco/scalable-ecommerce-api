@@ -1,6 +1,6 @@
 import { authPlugin } from '@ecommerce/auth'
 import { createProducer, Topics } from '@ecommerce/events'
-import { createLogger } from '@ecommerce/logger'
+import { getLoggerConfig } from '@ecommerce/logger'
 import Fastify, { type FastifyError } from 'fastify'
 import {
   serializerCompiler,
@@ -17,15 +17,16 @@ import { createAuthService } from './services/auth.service.js'
 import { createUserService } from './services/user.service.js'
 
 async function main() {
-  const logger = createLogger({ service: 'user-service' })
-  const app = Fastify({ logger })
+  const app = Fastify({
+    logger: getLoggerConfig({ service: 'user-service' }),
+  })
   app.setValidatorCompiler(validatorCompiler)
   app.setSerializerCompiler(serializerCompiler)
 
   // Database
   const { db, pool } = createDb(config.DATABASE_URL)
   await runMigrations(db)
-  logger.info('migrations applied')
+  app.log.info('migrations applied')
 
   // Kafka producer
   const kafka = new Kafka({
@@ -34,7 +35,7 @@ async function main() {
   })
   const producer = createProducer(kafka)
   await producer.connect()
-  logger.info('kafka producer connected')
+  app.log.info('kafka producer connected')
 
   // Auth plugin
   await app.register(authPlugin)
