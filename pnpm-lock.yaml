@@ -381,6 +381,9 @@ importers:
       '@types/bcrypt':
         specifier: ^5.0.2
         version: 5.0.2
+      '@types/node':
+        specifier: ^22.20.2
+        version: 22.20.2
       '@types/pg':
         specifier: ^8.11.0
         version: 8.23.1

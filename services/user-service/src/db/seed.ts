@@ -1,20 +1,16 @@
-import 'dotenv/config'
 import bcrypt from 'bcrypt'
 import { eq } from 'drizzle-orm'
+import { config } from '../config.js'
 import { createDb } from './index.js'
 import { runMigrations } from './migrate.js'
 import { users } from './schema.js'
-
-const DATABASE_URL =
-  process.env.DATABASE_URL ??
-  'postgresql://ecommerce:ecommerce_dev@localhost:5432/user_db'
 
 const ADMIN_EMAIL = 'admin@example.com'
 const ADMIN_PASSWORD = 'admin123'
 const ADMIN_NAME = 'Admin'
 
 async function seed() {
-  const { db, pool } = createDb(DATABASE_URL)
+  const { db, pool } = createDb(config.DATABASE_URL)
   await runMigrations(db)
 
   const existing = await db
