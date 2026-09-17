@@ -4,3 +4,6 @@ reviews:
   profile: chill
   auto_review:
     enabled: true
+
+pull_request_summary:
+  enabled: false
