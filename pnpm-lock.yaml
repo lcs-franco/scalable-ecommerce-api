@@ -365,6 +365,9 @@ importers:
       fastify:
         specifier: ^5.3.3
         version: 5.12.4
+      fastify-type-provider-zod:
+        specifier: ^4.0.2
+        version: 4.0.2(fastify@5.12.4)(zod@3.25.76)
       kafkajs:
         specifier: ^2.2.4
         version: 2.2.4
@@ -2545,6 +2548,15 @@ packages:
         integrity: sha512-FAIDA8eovSt5qcDgcBvDuX/v0Cjz0ohGhENZ/wpc3y+oZCY2afZ9Baqql3g/lC+OHRnciQol4ww7tuthOb9idw==,
       }
 
+  fastify-type-provider-zod@4.0.2:
+    resolution:
+      {
+        integrity: sha512-FDRzSL3ZuoZ+4YDevR1YOinmDKkxOdy3QB9dDR845sK+bQvDroPKhHAXLEAOObDxL7SMA0OZN/A4osrNBTdDTQ==,
+      }
+    peerDependencies:
+      fastify: ^5.0.0
+      zod: ^3.14.2
+
   fastify@5.12.4:
     resolution:
       {
@@ -3946,6 +3958,14 @@ packages:
       }
     engines: { node: '>=10' }
 
+  zod-to-json-schema@3.25.2:
+    resolution:
+      {
+        integrity: sha512-O/PgfnpT1xKSDeQYSCfRI5Gy3hPf91mKVDuYLUHZJMiDFptvP41MSnWofm8dnCm0256ZNfZIM7DSzuSMAFnjHA==,
+      }
+    peerDependencies:
+      zod: ^3.25.28 || ^4
+
   zod@3.25.76:
     resolution:
       {
@@ -5094,6 +5114,13 @@ snapshots:
 
   fastify-plugin@5.1.0: {}
 
+  fastify-type-provider-zod@4.0.2(fastify@5.12.4)(zod@3.25.76):
+    dependencies:
+      '@fastify/error': 4.2.0
+      fastify: 5.12.4
+      zod: 3.25.76
+      zod-to-json-schema: 3.25.2(zod@3.25.76)
+
   fastify@5.12.4:
     dependencies:
       '@fastify/ajv-compiler': 4.0.6
@@ -5878,5 +5905,9 @@ snapshots:
       yargs-parser: 22.0.0
 
   yocto-queue@0.1.0: {}
+
+  zod-to-json-schema@3.25.2(zod@3.25.76):
+    dependencies:
+      zod: 3.25.76
 
   zod@3.25.76: {}

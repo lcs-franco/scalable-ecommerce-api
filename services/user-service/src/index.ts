@@ -2,9 +2,12 @@ import { authPlugin } from '@ecommerce/auth'
 import { createProducer, Topics } from '@ecommerce/events'
 import { createLogger } from '@ecommerce/logger'
 import 'dotenv/config'
-import Fastify from 'fastify'
+import Fastify, { type FastifyError } from 'fastify'
+import {
+  serializerCompiler,
+  validatorCompiler,
+} from 'fastify-type-provider-zod'
 import { Kafka } from 'kafkajs'
-import { ZodError } from 'zod'
 import { createDb } from './db/index.js'
 import { runMigrations } from './db/migrate.js'
 import { ApplicationError, ErrorCode } from './errors/index.js'
@@ -22,6 +25,8 @@ const KAFKA_BROKER = process.env.KAFKA_BROKER ?? 'localhost:9092'
 async function main() {
   const logger = createLogger({ service: 'user-service' })
   const app = Fastify({ logger })
+  app.setValidatorCompiler(validatorCompiler)
+  app.setSerializerCompiler(serializerCompiler)
 
   // Database
   const { db, pool } = createDb(DATABASE_URL)
@@ -56,30 +61,29 @@ async function main() {
   })
 
   // Error handler
-  app.setErrorHandler((error, _request, reply) => {
-    if (error instanceof ZodError) {
-      return reply.status(400).send({
-        error: ErrorCode.VALIDATION,
-        message: error.issues.map((issue) => ({
-          field: issue.path.join('.'),
-          error: issue.message,
-        })),
-      })
-    }
+  app.setErrorHandler(
+    (error: FastifyError | ApplicationError, _request, reply) => {
+      if ('validation' in error) {
+        return reply.status(400).send({
+          error: ErrorCode.VALIDATION,
+          message: error.message,
+        })
+      }
 
-    if (error instanceof ApplicationError) {
-      return reply.status(error.statusCode).send({
-        error: error.code,
-        message: error.message,
-      })
-    }
+      if (error instanceof ApplicationError) {
+        return reply.status(error.statusCode).send({
+          error: error.code,
+          message: error.message,
+        })
+      }
 
-    app.log.error(error)
-    return reply.status(500).send({
-      error: ErrorCode.INTERNAL_SERVER_ERROR,
-      message: 'Internal server error',
-    })
-  })
+      app.log.error(error)
+      return reply.status(500).send({
+        error: ErrorCode.INTERNAL_SERVER_ERROR,
+        message: 'Internal server error',
+      })
+    },
+  )
 
   // Graceful shutdown
   const shutdown = async () => {

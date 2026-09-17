@@ -1,14 +1,15 @@
 import '@ecommerce/auth'
-import type { FastifyInstance } from 'fastify'
+import type { FastifyInstance, FastifyPluginOptions } from 'fastify'
+import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import type { createAuthService } from '../../services/auth.service.js'
 import type { createUserService } from '../../services/user.service.js'
 import {
-  RegisterBodySchema,
   LoginBodySchema,
   RefreshBodySchema,
+  RegisterBodySchema,
 } from './schemas/auth.schemas.js'
 
-interface IDeps {
+interface IDeps extends FastifyPluginOptions {
   authService: ReturnType<typeof createAuthService>
   userService: ReturnType<typeof createUserService>
   publishUserRegistered: (data: {
@@ -18,19 +19,16 @@ interface IDeps {
   }) => Promise<void>
 }
 
-export async function authRoutes(app: FastifyInstance, deps: IDeps) {
+export async function authRoutes(fastify: FastifyInstance, deps: IDeps) {
   const { authService, userService, publishUserRegistered } = deps
+  const app = fastify.withTypeProvider<ZodTypeProvider>()
 
   app.post(
     '/register',
-    { config: { skipAuth: true } },
+    { config: { skipAuth: true }, schema: { body: RegisterBodySchema } },
     async (request, reply) => {
-      const body = RegisterBodySchema.parse(request.body)
-      const user = await userService.create(
-        body.email,
-        body.password,
-        body.name,
-      )
+      const { email, password, name } = request.body
+      const user = await userService.create(email, password, name)
 
       await publishUserRegistered({
         userId: user.id,
@@ -47,18 +45,22 @@ export async function authRoutes(app: FastifyInstance, deps: IDeps) {
     },
   )
 
-  app.post('/login', { config: { skipAuth: true } }, async (request, reply) => {
-    const body = LoginBodySchema.parse(request.body)
-    const tokens = await authService.login(body.email, body.password)
-    return reply.send(tokens)
-  })
+  app.post(
+    '/login',
+    { config: { skipAuth: true }, schema: { body: LoginBodySchema } },
+    async (request, reply) => {
+      const { email, password } = request.body
+      const tokens = await authService.login(email, password)
+      return reply.send(tokens)
+    },
+  )
 
   app.post(
     '/refresh',
-    { config: { skipAuth: true } },
+    { config: { skipAuth: true }, schema: { body: RefreshBodySchema } },
     async (request, reply) => {
-      const body = RefreshBodySchema.parse(request.body)
-      const tokens = await authService.refresh(body.refreshToken)
+      const { refreshToken } = request.body
+      const tokens = await authService.refresh(refreshToken)
       return reply.send(tokens)
     },
   )

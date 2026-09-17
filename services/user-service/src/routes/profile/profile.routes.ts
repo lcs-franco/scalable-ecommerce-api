@@ -1,19 +1,19 @@
 import '@ecommerce/auth'
 import type { FastifyInstance } from 'fastify'
-import { UserNotFound } from '../../errors/index.js'
-import { UpdateProfileBodySchema } from './schemas/profile.schemas.js'
+import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import type { createUserService } from '../../services/user.service.js'
+import { UpdateProfileBodySchema } from './schemas/profile.schemas.js'
 
 interface IDeps {
   userService: ReturnType<typeof createUserService>
 }
 
-export async function profileRoutes(app: FastifyInstance, deps: IDeps) {
+export async function profileRoutes(fastify: FastifyInstance, deps: IDeps) {
+  const app = fastify.withTypeProvider<ZodTypeProvider>()
   const { userService } = deps
 
   app.get('/profile', async (request, reply) => {
     const user = await userService.findById(request.user.userId)
-    if (!user) throw new UserNotFound()
 
     return reply.send({
       id: user.id,
@@ -23,19 +23,21 @@ export async function profileRoutes(app: FastifyInstance, deps: IDeps) {
     })
   })
 
-  app.patch('/profile', async (request, reply) => {
-    const body = UpdateProfileBodySchema.parse(request.body)
+  app.patch(
+    '/profile',
+    { schema: { body: UpdateProfileBodySchema } },
+    async (request, reply) => {
+      const updatedUser = await userService.updateProfile(
+        request.user.userId,
+        request.body,
+      )
 
-    const updatedUser = await userService.updateProfile(
-      request.user.userId,
-      body,
-    )
-
-    reply.send({
-      id: updatedUser.id,
-      email: updatedUser.email,
-      name: updatedUser.name,
-      role: updatedUser.role,
-    })
-  })
+      return reply.send({
+        id: updatedUser.id,
+        email: updatedUser.email,
+        name: updatedUser.name,
+        role: updatedUser.role,
+      })
+    },
+  )
 }
