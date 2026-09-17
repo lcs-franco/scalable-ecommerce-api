@@ -29,6 +29,7 @@ export async function authRoutes(fastify: FastifyInstance, deps: IDeps) {
     async (request, reply) => {
       const { email, password, name } = request.body
       const user = await userService.create(email, password, name)
+      const tokens = await authService.generateTokens(user)
 
       await publishUserRegistered({
         userId: user.id,
@@ -36,12 +37,7 @@ export async function authRoutes(fastify: FastifyInstance, deps: IDeps) {
         name: user.name,
       })
 
-      return reply.status(201).send({
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-      })
+      return reply.status(201).send(tokens)
     },
   )
 
