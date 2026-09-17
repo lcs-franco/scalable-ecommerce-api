@@ -1,12 +1,12 @@
 import '@ecommerce/auth'
 import type { FastifyInstance } from 'fastify'
-import type { createAuthService } from '../services/auth.service.js'
-import type { createUserService } from '../services/user.service.js'
+import type { createAuthService } from '../../services/auth.service.js'
+import type { createUserService } from '../../services/user.service.js'
 import {
   RegisterBodySchema,
   LoginBodySchema,
   RefreshBodySchema,
-} from '../schemas/auth.schemas.js'
+} from './schemas/auth.schemas.js'
 
 interface IDeps {
   authService: ReturnType<typeof createAuthService>

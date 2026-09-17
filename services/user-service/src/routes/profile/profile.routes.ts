@@ -1,8 +1,8 @@
 import '@ecommerce/auth'
 import type { FastifyInstance } from 'fastify'
-import { UserNotFound } from '../errors/index.js'
-import { UpdateProfileBodySchema } from '../schemas/auth.schemas.js'
-import type { createUserService } from '../services/user.service.js'
+import { UserNotFound } from '../../errors/index.js'
+import { UpdateProfileBodySchema } from './schemas/profile.schemas.js'
+import type { createUserService } from '../../services/user.service.js'
 
 interface IDeps {
   userService: ReturnType<typeof createUserService>
