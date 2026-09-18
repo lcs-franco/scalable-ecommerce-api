@@ -11,7 +11,8 @@ export interface ITokenPayload {
 const ACCESS_TOKEN_EXPIRY = 900 // 15 minutes in seconds
 
 declare module '@fastify/jwt' {
-  interface IFastifyJWT {
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  interface FastifyJWT {
     payload: ITokenPayload
     user: ITokenPayload
   }

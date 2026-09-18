@@ -1,7 +1,12 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "noEmit": true
+    "noEmit": true,
+    "paths": {
+      "@ecommerce/auth": ["./packages/auth/src/index.ts"],
+      "@ecommerce/events": ["./packages/events/src/index.ts"],
+      "@ecommerce/logger": ["./packages/logger/src/index.ts"]
+    }
   },
   "include": ["packages/*/src", "services/*/src"]
 }
