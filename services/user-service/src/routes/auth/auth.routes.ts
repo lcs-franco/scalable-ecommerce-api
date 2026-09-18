@@ -1,4 +1,5 @@
 import '@ecommerce/auth'
+import { Topics } from '@ecommerce/events'
 import type { FastifyInstance, FastifyPluginOptions } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import type { createAuthService } from '../../services/auth.service.js'
@@ -31,11 +32,18 @@ export async function authRoutes(fastify: FastifyInstance, deps: IDeps) {
       const user = await userService.create(email, password, name)
       const tokens = await authService.generateTokens(user)
 
-      await publishUserRegistered({
-        userId: user.id,
-        email: user.email,
-        name: user.name,
-      })
+      try {
+        await publishUserRegistered({
+          userId: user.id,
+          email: user.email,
+          name: user.name,
+        })
+      } catch (err) {
+        app.log.error(
+          { err, userId: user.id },
+          `Failed to publish ${Topics.USER_REGISTERED} event`,
+        )
+      }
 
       return reply.status(201).send(tokens)
     },
