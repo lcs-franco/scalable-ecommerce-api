@@ -1,8 +1,9 @@
 import { migrate } from 'drizzle-orm/node-postgres/migrator'
+import { fileURLToPath } from 'node:url'
 import type { Db } from './index.js'
 
 export async function runMigrations(db: Db) {
   await migrate(db, {
-    migrationsFolder: new URL('../../drizzle', import.meta.url).pathname,
+    migrationsFolder: fileURLToPath(new URL('../../drizzle', import.meta.url)),
   })
 }
