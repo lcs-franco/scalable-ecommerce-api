@@ -1,5 +1,5 @@
 import '@fastify/jwt'
-import { eq } from 'drizzle-orm'
+import { and, eq, gt } from 'drizzle-orm'
 import type { FastifyInstance } from 'fastify'
 import { createHash, randomUUID } from 'node:crypto'
 import type { Db } from '../db/index.js'
@@ -62,21 +62,20 @@ export function createAuthService(
 
   async function refresh(rawRefreshToken: string) {
     const hashed = hashToken(rawRefreshToken)
-    const rows = await db
-      .select()
-      .from(refreshTokens)
-      .where(eq(refreshTokens.token, hashed))
-      .limit(1)
+    const deleted = await db
+      .delete(refreshTokens)
+      .where(
+        and(
+          eq(refreshTokens.token, hashed),
+          gt(refreshTokens.expiresAt, new Date()),
+        ),
+      )
+      .returning()
 
-    const stored = rows[0]
-    if (!stored || stored.expiresAt < new Date()) {
-      throw new InvalidRefreshToken()
-    }
+    const consumed = deleted[0]
+    if (!consumed) throw new InvalidRefreshToken()
 
-    // Delete the used refresh token (rotation)
-    await db.delete(refreshTokens).where(eq(refreshTokens.id, stored.id))
-
-    const user = await userService.findById(stored.userId)
+    const user = await userService.findById(consumed.userId)
 
     return generateTokens(user)
   }
