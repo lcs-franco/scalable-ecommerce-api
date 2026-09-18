@@ -6,10 +6,14 @@ import { runMigrations } from './migrate.js'
 import { users } from './schema.js'
 
 const ADMIN_EMAIL = 'admin@example.com'
-const ADMIN_PASSWORD = 'admin123'
 const ADMIN_NAME = 'Admin'
 
 async function seed() {
+  const adminPassword = process.env.ADMIN_PASSWORD
+  if (!adminPassword) {
+    throw new Error('ADMIN_PASSWORD env var is required for seeding')
+  }
+
   const { db, pool } = createDb(config.DATABASE_URL)
   await runMigrations(db)
 
@@ -23,7 +27,7 @@ async function seed() {
     // eslint-disable-next-line no-console
     console.log('admin user already exists, skipping seed')
   } else {
-    const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 12)
+    const passwordHash = await bcrypt.hash(adminPassword, 12)
     await db.insert(users).values({
       email: ADMIN_EMAIL,
       passwordHash,
@@ -31,7 +35,7 @@ async function seed() {
       role: 'admin',
     })
     // eslint-disable-next-line no-console
-    console.log(`admin user created: ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`)
+    console.log(`admin user created: ${ADMIN_EMAIL}`)
   }
 
   await pool.end()
