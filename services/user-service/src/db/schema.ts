@@ -13,7 +13,8 @@ export const users = pgTable('users', {
     .defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true })
     .notNull()
-    .defaultNow(),
+    .defaultNow()
+    .$onUpdate(() => new Date()),
 })
 
 export const refreshTokens = pgTable('refresh_tokens', {
