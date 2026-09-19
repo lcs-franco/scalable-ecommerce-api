@@ -340,7 +340,54 @@ importers:
 
   services/payment-service: {}
 
-  services/product-service: {}
+  services/product-service:
+    dependencies:
+      '@ecommerce/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
+      '@ecommerce/logger':
+        specifier: workspace:*
+        version: link:../../packages/logger
+      '@fastify/jwt':
+        specifier: ^9.1.0
+        version: 9.1.0
+      dotenv:
+        specifier: ^16.4.7
+        version: 16.6.1
+      drizzle-orm:
+        specifier: ^0.38.0
+        version: 0.38.4(@types/pg@8.23.1)(pg@8.23.0)
+      fastify:
+        specifier: ^5.3.3
+        version: 5.12.4
+      fastify-type-provider-zod:
+        specifier: ^4.0.2
+        version: 4.0.2(fastify@5.12.4)(zod@3.25.76)
+      pg:
+        specifier: ^8.13.0
+        version: 8.23.0
+      zod:
+        specifier: ^3.24.0
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^22.20.2
+        version: 22.20.2
+      '@types/pg':
+        specifier: ^8.11.0
+        version: 8.23.1
+      drizzle-kit:
+        specifier: ^0.30.0
+        version: 0.30.6
+      tsx:
+        specifier: ^4.19.0
+        version: 4.23.13
+      typescript:
+        specifier: ^5.8.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.7(@types/node@22.20.2)(jiti@2.6.1)(tsx@4.23.13)(yaml@2.9.1)
 
   services/user-service:
     dependencies:
