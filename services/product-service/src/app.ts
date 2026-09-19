@@ -1,11 +1,12 @@
-import '@fastify/jwt'
 import { authPlugin } from '@ecommerce/auth'
 import { getLoggerConfig } from '@ecommerce/logger'
-import Fastify, { type FastifyError } from 'fastify'
+import '@fastify/jwt'
+import Fastify, { FastifyError } from 'fastify'
 import {
   serializerCompiler,
   validatorCompiler,
 } from 'fastify-type-provider-zod'
+import { ZodError } from 'zod'
 import type { Db } from './db/index.js'
 import { runMigrations } from './db/migrate.js'
 import { ApplicationError, ErrorCode } from './errors/index.js'
@@ -29,7 +30,7 @@ export async function buildApp(opts: IBuildAppOptions) {
 
   app.setErrorHandler(
     (error: FastifyError | ApplicationError, _request, reply) => {
-      if ('validation' in error) {
+      if (error instanceof ZodError) {
         return reply.status(400).send({
           error: ErrorCode.VALIDATION,
           message: error.message,
@@ -43,7 +44,7 @@ export async function buildApp(opts: IBuildAppOptions) {
         })
       }
 
-      const statusCode = 'statusCode' in error ? (error.statusCode ?? 500) : 500
+      const statusCode = error.statusCode ?? 500
       if (statusCode < 500) {
         return reply.status(statusCode).send({
           error: error.message,
