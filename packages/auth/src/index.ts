@@ -2,6 +2,8 @@ import fjwt from '@fastify/jwt'
 import type { FastifyInstance } from 'fastify'
 import fp from 'fastify-plugin'
 
+export type { FastifyJWT } from '@fastify/jwt'
+
 export interface ITokenPayload {
   userId: string
   email: string

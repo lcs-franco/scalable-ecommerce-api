@@ -1,6 +1,5 @@
 import { authPlugin } from '@ecommerce/auth'
 import { getLoggerConfig } from '@ecommerce/logger'
-import '@fastify/jwt'
 import Fastify, { FastifyError } from 'fastify'
 import {
   serializerCompiler,
