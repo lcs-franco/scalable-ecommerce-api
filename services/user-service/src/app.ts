@@ -25,7 +25,7 @@ interface IBuildAppOptions {
 
 export async function buildApp(opts: IBuildAppOptions) {
   const app = Fastify({
-    logger: getLoggerConfig({ service: 'user-service' }),
+    logger: getLoggerConfig({ service: 'user-service', level: 'warn' }),
   })
   app.setValidatorCompiler(validatorCompiler)
   app.setSerializerCompiler(serializerCompiler)
