@@ -6,7 +6,7 @@ export const AddItemBodySchema = z.object({
 })
 
 export const UpdateItemBodySchema = z.object({
-  quantity: z.number().int().min(0),
+  quantity: z.number().int().min(1),
 })
 
 export const ProductIdParamsSchema = z.object({
