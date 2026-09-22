@@ -66,21 +66,7 @@ export async function cartRoutes(fastify: FastifyInstance, deps: IDeps) {
 
     const productIds = items.map((i) => i.productId)
     const products = await productClient.fetchProducts(productIds)
-
-    const enriched = items.map((item) => {
-      const product = products.get(item.productId)
-      return {
-        productId: item.productId,
-        name: product?.name ?? null,
-        price: product?.price ?? null,
-        quantity: item.quantity,
-        lineTotal: product ? product.price * item.quantity : null,
-        unavailable: !product,
-      }
-    })
-
-    const total = enriched.reduce((sum, i) => sum + (i.lineTotal ?? 0), 0)
-    return reply.send({ items: enriched, total })
+    return reply.send(cartService.enrichItems(items, products))
   })
 
   app.delete('/cart', async (request, reply) => {
@@ -88,8 +74,19 @@ export async function cartRoutes(fastify: FastifyInstance, deps: IDeps) {
     return reply.status(204).send()
   })
 
-  app.post('/cart/checkout', async (request, reply) => {
-    const items = await cartService.checkout(request.user.userId)
-    return reply.send({ items })
-  })
+  // Internal endpoint — called service-to-service by order-service.
+  // Skips JWT: the caller passes the userId via x-user-id header.
+  // In production, the API gateway must block external access to this route.
+  app.post(
+    '/cart/checkout',
+    { config: { skipAuth: true } },
+    async (request, reply) => {
+      const userId = request.headers['x-user-id'] as string
+      if (!userId) {
+        return reply.status(400).send({ error: 'x-user-id header required' })
+      }
+      const items = await cartService.checkout(userId)
+      return reply.send({ items })
+    },
+  )
 }
