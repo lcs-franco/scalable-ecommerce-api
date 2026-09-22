@@ -1,0 +1,9 @@
+export enum ErrorCode {
+  // App
+  CART_EMPTY = 'CART_EMPTY',
+  ITEM_NOT_IN_CART = 'ITEM_NOT_IN_CART',
+  VALIDATION = 'VALIDATION',
+
+  // Http
+  INTERNAL_SERVER_ERROR = 'INTERNAL_SERVER_ERROR',
+}
