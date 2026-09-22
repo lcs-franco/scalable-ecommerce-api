@@ -4,6 +4,16 @@ import type { IProductInfo } from './product.client.js'
 
 const CART_TTL_SECONDS = 7 * 24 * 60 * 60 // 7 days
 
+// Lua: atomic check-exists + set + expire
+const UPDATE_ITEM_LUA = `
+if redis.call('HEXISTS', KEYS[1], ARGV[1]) == 0 then
+  return 0
+end
+redis.call('HSET', KEYS[1], ARGV[1], ARGV[2])
+redis.call('EXPIRE', KEYS[1], ARGV[3])
+return 1
+`
+
 function cartKey(userId: string) {
   return `cart:${userId}`
 }
@@ -32,8 +42,11 @@ function parseCartHash(raw: Record<string, string>): ICartItem[] {
 export function createCartService(redis: RedisClient) {
   async function addItem(userId: string, productId: string, quantity: number) {
     const key = cartKey(userId)
-    await redis.hset(key, productId, quantity)
-    await redis.expire(key, CART_TTL_SECONDS)
+    await redis
+      .multi()
+      .hset(key, productId, quantity)
+      .expire(key, CART_TTL_SECONDS)
+      .exec()
   }
 
   async function updateItem(
@@ -42,11 +55,15 @@ export function createCartService(redis: RedisClient) {
     quantity: number,
   ) {
     const key = cartKey(userId)
-    const exists = await redis.hexists(key, productId)
-    if (!exists) throw new ItemNotInCart()
-
-    await redis.hset(key, productId, quantity)
-    await redis.expire(key, CART_TTL_SECONDS)
+    const result = await redis.eval(
+      UPDATE_ITEM_LUA,
+      1,
+      key,
+      productId,
+      quantity,
+      CART_TTL_SECONDS,
+    )
+    if (result === 0) throw new ItemNotInCart()
   }
 
   async function removeItem(userId: string, productId: string) {
