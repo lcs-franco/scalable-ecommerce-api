@@ -44,27 +44,24 @@ describe('POST /cart/items', () => {
     expect(qty).toBe('2')
   })
 
-  it('accumulates quantity on repeated adds', async () => {
-    const payload = {
-      productId: '00000000-0000-0000-0000-000000000001',
-      quantity: 3,
-    }
+  it('overwrites quantity on repeated adds (idempotent)', async () => {
+    const productId = '00000000-0000-0000-0000-000000000001'
 
     await app.inject({
       method: 'POST',
       url: '/cart/items',
       headers: { authorization: `Bearer ${token}` },
-      payload,
+      payload: { productId, quantity: 3 },
     })
     await app.inject({
       method: 'POST',
       url: '/cart/items',
       headers: { authorization: `Bearer ${token}` },
-      payload: { ...payload, quantity: 2 },
+      payload: { productId, quantity: 2 },
     })
 
-    const qty = await redis.hget('cart:user-id', payload.productId)
-    expect(qty).toBe('5')
+    const qty = await redis.hget('cart:user-id', productId)
+    expect(qty).toBe('2')
   })
 
   it('rejects unauthenticated requests', async () => {
@@ -108,7 +105,7 @@ describe('PATCH /cart/items/:productId', () => {
     expect(qty).toBe('5')
   })
 
-  it('removes item when quantity is 0', async () => {
+  it('rejects quantity 0', async () => {
     await redis.hset('cart:user-id', productId, '3')
 
     const res = await app.inject({
@@ -118,9 +115,7 @@ describe('PATCH /cart/items/:productId', () => {
       payload: { quantity: 0 },
     })
 
-    expect(res.statusCode).toBe(200)
-    const exists = await redis.hexists('cart:user-id', productId)
-    expect(exists).toBe(0)
+    expect(res.statusCode).toBe(400)
   })
 
   it('returns 404 for item not in cart', async () => {
@@ -228,7 +223,7 @@ describe('POST /cart/checkout', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/cart/checkout',
-      headers: { authorization: `Bearer ${token}` },
+      headers: { 'x-user-id': 'user-id' },
     })
 
     expect(res.statusCode).toBe(200)
@@ -241,7 +236,6 @@ describe('POST /cart/checkout', () => {
       ]),
     )
 
-    // Cart should be empty after checkout
     const remaining = await redis.hgetall('cart:user-id')
     expect(Object.keys(remaining)).toHaveLength(0)
   })
@@ -250,11 +244,33 @@ describe('POST /cart/checkout', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/cart/checkout',
-      headers: { authorization: `Bearer ${token}` },
+      headers: { 'x-user-id': 'user-id' },
     })
 
     expect(res.statusCode).toBe(400)
     expect(res.json().error).toBe('CART_EMPTY')
+  })
+
+  it('does not require JWT (internal endpoint)', async () => {
+    await redis.hset('cart:user-id', 'prod-a', '1')
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/cart/checkout',
+      headers: { 'x-user-id': 'user-id' },
+    })
+
+    expect(res.statusCode).toBe(200)
+  })
+
+  it('returns 400 without x-user-id header', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/cart/checkout',
+    })
+
+    expect(res.statusCode).toBe(400)
+    expect(res.json().error).toBe('x-user-id header required')
   })
 })
 
@@ -270,7 +286,6 @@ describe('TTL', () => {
     })
 
     const ttl = await redis.ttl('cart:user-id')
-    // TTL should be close to 7 days (604800 seconds), allow 10s tolerance
     expect(ttl).toBeGreaterThan(604800 - 10)
     expect(ttl).toBeLessThanOrEqual(604800)
   })
