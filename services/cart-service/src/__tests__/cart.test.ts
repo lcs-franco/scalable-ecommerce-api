@@ -1,6 +1,11 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import type { Redis } from 'ioredis'
-import { cleanRedis, createTestApp, userToken } from './helpers.js'
+import {
+  cleanRedis,
+  createTestApp,
+  TEST_INTERNAL_TOKEN,
+  userToken,
+} from './helpers.js'
 
 let app: Awaited<ReturnType<typeof createTestApp>>['app']
 let redis: Redis
@@ -214,6 +219,11 @@ describe('DELETE /cart', () => {
 })
 
 describe('POST /cart/checkout', () => {
+  const internalHeaders = {
+    'x-internal-token': TEST_INTERNAL_TOKEN,
+    'x-user-id': 'user-id',
+  }
+
   it('returns cart items and clears cart atomically', async () => {
     const p1 = '00000000-0000-0000-0000-000000000001'
     const p2 = '00000000-0000-0000-0000-000000000002'
@@ -223,7 +233,7 @@ describe('POST /cart/checkout', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/cart/checkout',
-      headers: { 'x-user-id': 'user-id' },
+      headers: internalHeaders,
     })
 
     expect(res.statusCode).toBe(200)
@@ -244,14 +254,14 @@ describe('POST /cart/checkout', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/cart/checkout',
-      headers: { 'x-user-id': 'user-id' },
+      headers: internalHeaders,
     })
 
     expect(res.statusCode).toBe(400)
     expect(res.json().error).toBe('CART_EMPTY')
   })
 
-  it('does not require JWT (internal endpoint)', async () => {
+  it('rejects requests without service token', async () => {
     await redis.hset('cart:user-id', 'prod-a', '1')
 
     const res = await app.inject({
@@ -260,13 +270,25 @@ describe('POST /cart/checkout', () => {
       headers: { 'x-user-id': 'user-id' },
     })
 
-    expect(res.statusCode).toBe(200)
+    expect(res.statusCode).toBe(401)
+    expect(res.json().error).toBe('Invalid or missing service token')
+  })
+
+  it('rejects requests with wrong service token', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/cart/checkout',
+      headers: { 'x-internal-token': 'wrong-token', 'x-user-id': 'user-id' },
+    })
+
+    expect(res.statusCode).toBe(401)
   })
 
   it('returns 400 without x-user-id header', async () => {
     const res = await app.inject({
       method: 'POST',
       url: '/cart/checkout',
+      headers: { 'x-internal-token': TEST_INTERNAL_TOKEN },
     })
 
     expect(res.statusCode).toBe(400)

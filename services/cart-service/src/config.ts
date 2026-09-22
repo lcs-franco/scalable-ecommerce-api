@@ -6,6 +6,9 @@ const envSchema = z.object({
   REDIS_URL: z.string().min(1),
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
   PRODUCT_SERVICE_URL: z.string().url(),
+  INTERNAL_SERVICE_TOKEN: z
+    .string()
+    .min(16, 'INTERNAL_SERVICE_TOKEN must be at least 16 characters'),
 })
 
 export const config = envSchema.parse(process.env)

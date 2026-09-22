@@ -9,6 +9,7 @@ async function main() {
   const app = await buildApp({
     redis,
     productServiceUrl: config.PRODUCT_SERVICE_URL,
+    internalServiceToken: config.INTERNAL_SERVICE_TOKEN,
   })
 
   const shutdown = async () => {

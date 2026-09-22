@@ -12,10 +12,11 @@ import {
 interface IDeps extends FastifyPluginOptions {
   cartService: ReturnType<typeof createCartService>
   productClient: ReturnType<typeof createProductClient>
+  internalServiceToken: string
 }
 
 export async function cartRoutes(fastify: FastifyInstance, deps: IDeps) {
-  const { cartService, productClient } = deps
+  const { cartService, productClient, internalServiceToken } = deps
   const app = fastify.withTypeProvider<ZodTypeProvider>()
 
   app.post(
@@ -75,12 +76,17 @@ export async function cartRoutes(fastify: FastifyInstance, deps: IDeps) {
   })
 
   // Internal endpoint — called service-to-service by order-service.
-  // Skips JWT: the caller passes the userId via x-user-id header.
-  // In production, the API gateway must block external access to this route.
+  // Authenticated via shared secret (x-internal-token), not JWT.
   app.post(
     '/cart/checkout',
     { config: { skipAuth: true } },
     async (request, reply) => {
+      const token = request.headers['x-internal-token'] as string
+      if (token !== internalServiceToken) {
+        return reply
+          .status(401)
+          .send({ error: 'Invalid or missing service token' })
+      }
       const userId = request.headers['x-user-id'] as string
       if (!userId) {
         return reply.status(400).send({ error: 'x-user-id header required' })

@@ -15,6 +15,7 @@ import { createProductClient } from './services/product.client.js'
 interface IBuildAppOptions {
   redis: RedisClient
   productServiceUrl: string
+  internalServiceToken: string
 }
 
 export async function buildApp(opts: IBuildAppOptions) {
@@ -62,7 +63,11 @@ export async function buildApp(opts: IBuildAppOptions) {
   const productClient = createProductClient(opts.productServiceUrl)
 
   await app.register(async (instance) => {
-    await cartRoutes(instance, { cartService, productClient })
+    await cartRoutes(instance, {
+      cartService,
+      productClient,
+      internalServiceToken: opts.internalServiceToken,
+    })
   })
 
   return app
