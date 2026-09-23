@@ -27,13 +27,15 @@ export const UpdateProductBodySchema = z.object({
   categoryId: z.string().uuid().optional(),
 })
 
-export const ValidateOrderBodySchema = z.object({
-  items: z
-    .array(
-      z.object({
-        productId: z.string().uuid(),
-        quantity: z.number().int().min(1),
-      }),
-    )
-    .min(1),
-})
+const OrderItemsSchema = z
+  .array(
+    z.object({
+      productId: z.string().uuid(),
+      quantity: z.number().int().min(1),
+    }),
+  )
+  .min(1)
+
+export const ValidateOrderBodySchema = z.object({ items: OrderItemsSchema })
+
+export const RestoreStockBodySchema = z.object({ items: OrderItemsSchema })

@@ -6,7 +6,10 @@ import { createDb } from './db/index.js'
 async function main() {
   const { db, pool } = createDb(config.DATABASE_URL)
 
-  const app = await buildApp({ db })
+  const app = await buildApp({
+    db,
+    internalServiceToken: config.INTERNAL_SERVICE_TOKEN,
+  })
 
   const shutdown = async () => {
     await app.close()
