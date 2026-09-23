@@ -64,12 +64,10 @@ export function createOrderService(deps: IDeps) {
       )
 
       const result = await db.transaction(async (tx) => {
-        const orderRow = await tx
+        const [order] = await tx
           .insert(orders)
           .values({ userId, total })
           .returning()
-
-        const order = orderRow[0]
 
         const insertedItems = await tx
           .insert(orderItems)
@@ -114,7 +112,7 @@ export function createOrderService(deps: IDeps) {
 
     const where = conditions.length > 0 ? and(...conditions) : undefined
 
-    const [items, countResult] = await Promise.all([
+    const [items, [countResult]] = await Promise.all([
       db
         .select()
         .from(orders)
@@ -128,34 +126,34 @@ export function createOrderService(deps: IDeps) {
         .where(where),
     ])
 
-    return { items, total: countResult[0].count }
+    return { items, total: countResult.count }
   }
 
   async function findById(id: string) {
-    const order = await db
+    const [order] = await db
       .select()
       .from(orders)
       .where(eq(orders.id, id))
       .limit(1)
-    if (!order[0]) throw new OrderNotFound()
+    if (!order) throw new OrderNotFound()
 
     const items = await db
       .select()
       .from(orderItems)
       .where(eq(orderItems.orderId, id))
 
-    return { ...order[0], items }
+    return { ...order, items }
   }
 
   async function updateStatus(id: string, newStatus: OrderStatus) {
-    const existing = await db
+    const [existing] = await db
       .select()
       .from(orders)
       .where(eq(orders.id, id))
       .limit(1)
-    if (!existing[0]) throw new OrderNotFound()
+    if (!existing) throw new OrderNotFound()
 
-    const currentStatus = existing[0].status as OrderStatus
+    const currentStatus = existing.status as OrderStatus
     if (!VALID_TRANSITIONS[currentStatus].includes(newStatus)) {
       throw new InvalidStatusTransition(currentStatus, newStatus)
     }
@@ -183,12 +181,12 @@ export function createOrderService(deps: IDeps) {
   }
 
   async function markAsCancelled(orderId: string) {
-    const rows = await db
+    const [row] = await db
       .select()
       .from(orders)
       .where(eq(orders.id, orderId))
       .limit(1)
-    if (!rows[0] || rows[0].status !== 'pending') return null
+    if (!row || row.status !== 'pending') return null
 
     await db
       .update(orders)
