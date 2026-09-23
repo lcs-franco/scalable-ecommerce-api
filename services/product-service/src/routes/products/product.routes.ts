@@ -1,7 +1,7 @@
 import '@ecommerce/auth'
 import type { FastifyInstance, FastifyPluginOptions } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
-import { Forbidden } from '../../errors/index.js'
+import { Forbidden, Unauthorized } from '../../errors/index.js'
 import type { createProductService } from '../../services/product.service.js'
 import {
   CreateProductBodySchema,
@@ -19,6 +19,10 @@ interface IDeps extends FastifyPluginOptions {
 
 function requireAdmin(role: string) {
   if (role !== 'admin') throw new Forbidden()
+}
+
+function requireInternalToken(header: string | undefined, expected: string) {
+  if (header !== expected) throw new Unauthorized()
 }
 
 export async function productRoutes(fastify: FastifyInstance, deps: IDeps) {
@@ -99,10 +103,10 @@ export async function productRoutes(fastify: FastifyInstance, deps: IDeps) {
     '/products/restore-stock',
     { config: { skipAuth: true }, schema: { body: RestoreStockBodySchema } },
     async (request, reply) => {
-      const token = request.headers['x-internal-token'] as string
-      if (token !== internalServiceToken) {
-        return reply.status(401).send({ error: 'Invalid service token' })
-      }
+      requireInternalToken(
+        request.headers['x-internal-token'] as string,
+        internalServiceToken,
+      )
       await productService.restoreStock(request.body.items)
       return reply.send({ message: 'Stock restored' })
     },
