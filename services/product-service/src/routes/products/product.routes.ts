@@ -7,6 +7,7 @@ import {
   CreateProductBodySchema,
   ListProductsQuerySchema,
   ProductParamsSchema,
+  RestoreStockBodySchema,
   UpdateProductBodySchema,
   ValidateOrderBodySchema,
 } from './schemas/product.schemas.js'
@@ -96,7 +97,7 @@ export async function productRoutes(fastify: FastifyInstance, deps: IDeps) {
   // Authenticated via shared secret (x-internal-token), not JWT.
   app.post(
     '/products/restore-stock',
-    { config: { skipAuth: true }, schema: { body: ValidateOrderBodySchema } },
+    { config: { skipAuth: true }, schema: { body: RestoreStockBodySchema } },
     async (request, reply) => {
       const token = request.headers['x-internal-token'] as string
       if (token !== internalServiceToken) {
