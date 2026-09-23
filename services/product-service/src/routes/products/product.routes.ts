@@ -13,7 +13,7 @@ import {
 
 interface IDeps extends FastifyPluginOptions {
   productService: ReturnType<typeof createProductService>
-  internalServiceToken?: string
+  internalServiceToken: string
 }
 
 function requireAdmin(role: string) {
@@ -99,10 +99,8 @@ export async function productRoutes(fastify: FastifyInstance, deps: IDeps) {
     { config: { skipAuth: true }, schema: { body: ValidateOrderBodySchema } },
     async (request, reply) => {
       const token = request.headers['x-internal-token'] as string
-      if (!internalServiceToken || token !== internalServiceToken) {
-        return reply
-          .status(401)
-          .send({ error: 'Invalid or missing service token' })
+      if (token !== internalServiceToken) {
+        return reply.status(401).send({ error: 'Invalid service token' })
       }
       await productService.restoreStock(request.body.items)
       return reply.send({ message: 'Stock restored' })

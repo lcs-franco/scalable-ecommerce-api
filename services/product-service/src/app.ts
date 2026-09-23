@@ -16,7 +16,7 @@ import { createProductService } from './services/product.service.js'
 
 interface IBuildAppOptions {
   db: Db
-  internalServiceToken?: string
+  internalServiceToken: string
 }
 
 export async function buildApp(opts: IBuildAppOptions) {
