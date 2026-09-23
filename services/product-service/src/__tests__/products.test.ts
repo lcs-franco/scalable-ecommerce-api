@@ -281,4 +281,65 @@ describe('product routes', () => {
       expect(res.statusCode).toBe(400)
     })
   })
+
+  describe('POST /products/restore-stock', () => {
+    it('should return 401 without valid token', async () => {
+      const category = await createCategory(app)
+      const product = await createProduct(app, category.id, { stock: 10 })
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/products/restore-stock',
+        headers: { 'x-internal-token': 'wrong-token' },
+        payload: { items: [{ productId: product.id, quantity: 3 }] },
+      })
+
+      expect(res.statusCode).toBe(401)
+    })
+
+    it('should restore stock with valid token', async () => {
+      const category = await createCategory(app)
+      const product = await createProduct(app, category.id, { stock: 10 })
+
+      await app.inject({
+        method: 'POST',
+        url: '/products/validate-order',
+        headers: { authorization: `Bearer ${adminToken(app)}` },
+        payload: { items: [{ productId: product.id, quantity: 3 }] },
+      })
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/products/restore-stock',
+        headers: { 'x-internal-token': 'test-internal-token' },
+        payload: { items: [{ productId: product.id, quantity: 3 }] },
+      })
+
+      expect(res.statusCode).toBe(200)
+
+      const after = await app.inject({
+        method: 'GET',
+        url: `/products/${product.id}`,
+      })
+      expect(after.json().stock).toBe(10)
+    })
+
+    it('should return 404 for non-existent product', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/products/restore-stock',
+        headers: { 'x-internal-token': 'test-internal-token' },
+        payload: {
+          items: [
+            {
+              productId: '00000000-0000-0000-0000-000000000000',
+              quantity: 3,
+            },
+          ],
+        },
+      })
+
+      expect(res.statusCode).toBe(404)
+    })
+  })
 })
