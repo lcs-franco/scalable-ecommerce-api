@@ -13,6 +13,7 @@ import {
 
 interface IDeps extends FastifyPluginOptions {
   productService: ReturnType<typeof createProductService>
+  internalServiceToken?: string
 }
 
 function requireAdmin(role: string) {
@@ -20,7 +21,7 @@ function requireAdmin(role: string) {
 }
 
 export async function productRoutes(fastify: FastifyInstance, deps: IDeps) {
-  const { productService } = deps
+  const { productService, internalServiceToken } = deps
   const app = fastify.withTypeProvider<ZodTypeProvider>()
 
   app.get(
@@ -88,6 +89,23 @@ export async function productRoutes(fastify: FastifyInstance, deps: IDeps) {
     async (request, reply) => {
       const validated = await productService.validateOrder(request.body.items)
       return reply.send({ items: validated })
+    },
+  )
+
+  // Internal endpoint — called service-to-service by order-service.
+  // Authenticated via shared secret (x-internal-token), not JWT.
+  app.post(
+    '/products/restore-stock',
+    { config: { skipAuth: true }, schema: { body: ValidateOrderBodySchema } },
+    async (request, reply) => {
+      const token = request.headers['x-internal-token'] as string
+      if (!internalServiceToken || token !== internalServiceToken) {
+        return reply
+          .status(401)
+          .send({ error: 'Invalid or missing service token' })
+      }
+      await productService.restoreStock(request.body.items)
+      return reply.send({ message: 'Stock restored' })
     },
   )
 }

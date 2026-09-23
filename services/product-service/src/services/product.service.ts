@@ -150,5 +150,18 @@ export function createProductService(db: Db) {
     })
   }
 
-  return { list, findById, create, update, remove, validateOrder }
+  async function restoreStock(items: IOrderItem[]) {
+    return db.transaction(async (tx) => {
+      for (const item of items) {
+        await tx
+          .update(products)
+          .set({
+            stock: sql`stock + ${item.quantity}`,
+          })
+          .where(eq(products.id, item.productId))
+      }
+    })
+  }
+
+  return { list, findById, create, update, remove, validateOrder, restoreStock }
 }
