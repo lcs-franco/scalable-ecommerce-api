@@ -153,12 +153,15 @@ export function createProductService(db: Db) {
   async function restoreStock(items: IOrderItem[]) {
     return db.transaction(async (tx) => {
       for (const item of items) {
-        await tx
+        const [updated] = await tx
           .update(products)
           .set({
             stock: sql`stock + ${item.quantity}`,
           })
           .where(eq(products.id, item.productId))
+          .returning()
+
+        if (!updated) throw new ProductNotFound()
       }
     })
   }
