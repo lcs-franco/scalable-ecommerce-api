@@ -1,9 +1,9 @@
-type CompesationFn = () => Promise<void>
+type CompensationFn = () => Promise<void>
 
 export function saga() {
-  const compensations: CompesationFn[] = []
+  const compensations: CompensationFn[] = []
 
-  function addCompensation(fn: CompesationFn) {
+  function addCompensation(fn: CompensationFn) {
     compensations.unshift(fn)
   }
 
