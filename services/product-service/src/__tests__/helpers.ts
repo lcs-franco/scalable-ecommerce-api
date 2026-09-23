@@ -11,7 +11,10 @@ const TEST_DATABASE_URL =
 export async function createTestApp() {
   const { db, pool } = createDb(TEST_DATABASE_URL)
 
-  const app = await buildApp({ db })
+  const app = await buildApp({
+    db,
+    internalServiceToken: 'test-internal-token',
+  })
   await app.ready()
 
   return { app, db, pool }
