@@ -174,10 +174,19 @@ export function createOrderService(deps: IDeps) {
   }
 
   async function markAsPaid(orderId: string) {
-    await db
+    const [row] = await db
       .update(orders)
       .set({ status: 'paid' })
       .where(and(eq(orders.id, orderId), eq(orders.status, 'pending')))
+      .returning()
+
+    if (row) {
+      try {
+        await publishOrderStatusChanged({ orderId, status: 'paid' })
+      } catch {
+        // Fire-and-forget — don't fail the consumer
+      }
+    }
   }
 
   async function markAsCancelled(orderId: string) {
@@ -192,6 +201,12 @@ export function createOrderService(deps: IDeps) {
       .update(orders)
       .set({ status: 'cancelled' })
       .where(eq(orders.id, orderId))
+
+    try {
+      await publishOrderStatusChanged({ orderId, status: 'cancelled' })
+    } catch {
+      // Fire-and-forget — don't fail the consumer
+    }
 
     const items = await db
       .select()

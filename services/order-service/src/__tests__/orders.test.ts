@@ -205,6 +205,97 @@ describe('order routes', () => {
     })
   })
 
+  describe('markAsPaid', () => {
+    it('should publish order.status-changed event', async () => {
+      const createRes = await placeTestOrder()
+      const orderId = createRes.json().id
+      publishers.events.length = 0
+
+      const ctx = await createTestApp()
+      try {
+        await ctx.orderService.markAsPaid(orderId)
+
+        expect(ctx.publishers.events).toHaveLength(1)
+        expect(ctx.publishers.events[0]).toEqual({
+          topic: 'order.status-changed',
+          data: { orderId, status: 'paid' },
+        })
+      } finally {
+        await ctx.app.close()
+        await ctx.pool.end()
+      }
+    })
+
+    it('should not publish event when order is not pending', async () => {
+      const createRes = await placeTestOrder()
+      const orderId = createRes.json().id
+
+      // move to paid first
+      await app.inject({
+        method: 'PATCH',
+        url: `/orders/${orderId}/status`,
+        headers: { authorization: `Bearer ${adminToken(app)}` },
+        payload: { status: 'paid' },
+      })
+      publishers.events.length = 0
+
+      const ctx = await createTestApp()
+      try {
+        await ctx.orderService.markAsPaid(orderId)
+        expect(ctx.publishers.events).toHaveLength(0)
+      } finally {
+        await ctx.app.close()
+        await ctx.pool.end()
+      }
+    })
+  })
+
+  describe('markAsCancelled', () => {
+    it('should publish order.status-changed event', async () => {
+      const createRes = await placeTestOrder()
+      const orderId = createRes.json().id
+      publishers.events.length = 0
+
+      const ctx = await createTestApp()
+      try {
+        const items = await ctx.orderService.markAsCancelled(orderId)
+
+        expect(items).not.toBeNull()
+        expect(ctx.publishers.events).toHaveLength(1)
+        expect(ctx.publishers.events[0]).toEqual({
+          topic: 'order.status-changed',
+          data: { orderId, status: 'cancelled' },
+        })
+      } finally {
+        await ctx.app.close()
+        await ctx.pool.end()
+      }
+    })
+
+    it('should not publish event when order is not pending', async () => {
+      const createRes = await placeTestOrder()
+      const orderId = createRes.json().id
+
+      await app.inject({
+        method: 'PATCH',
+        url: `/orders/${orderId}/status`,
+        headers: { authorization: `Bearer ${adminToken(app)}` },
+        payload: { status: 'paid' },
+      })
+      publishers.events.length = 0
+
+      const ctx = await createTestApp()
+      try {
+        const items = await ctx.orderService.markAsCancelled(orderId)
+        expect(items).toBeNull()
+        expect(ctx.publishers.events).toHaveLength(0)
+      } finally {
+        await ctx.app.close()
+        await ctx.pool.end()
+      }
+    })
+  })
+
   describe('PATCH /orders/:id/status', () => {
     it('should update status as admin', async () => {
       const createRes = await placeTestOrder()
