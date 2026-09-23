@@ -16,6 +16,7 @@ import { createProductService } from './services/product.service.js'
 
 interface IBuildAppOptions {
   db: Db
+  internalServiceToken: string
 }
 
 export async function buildApp(opts: IBuildAppOptions) {
@@ -66,7 +67,10 @@ export async function buildApp(opts: IBuildAppOptions) {
 
   await app.register(async (instance) => {
     await categoryRoutes(instance, { categoryService })
-    await productRoutes(instance, { productService })
+    await productRoutes(instance, {
+      productService,
+      internalServiceToken: opts.internalServiceToken,
+    })
   })
 
   return app
