@@ -10,3 +10,4 @@ docker-volumes/
 
 specs/*
 .scratch/*
+.claude/*
