@@ -46,7 +46,6 @@ async function main() {
   await setupConsumers({
     consumer,
     orderService,
-    productClient,
     log: app.log,
   })
 

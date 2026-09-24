@@ -287,7 +287,7 @@ describe('order routes', () => {
       const ctx = await createTestApp()
       try {
         const items = await ctx.orderService.markAsCancelled(orderId)
-        expect(items).toBeNull()
+        expect(items).toBeUndefined()
         expect(ctx.publishers.events).toHaveLength(0)
       } finally {
         await ctx.app.close()
