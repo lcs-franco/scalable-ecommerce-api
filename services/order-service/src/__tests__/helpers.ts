@@ -64,7 +64,7 @@ export async function createTestApp(overrides?: {
     productClient: overrides?.productClient ?? mockProductClient(),
     publishOrderPlaced: publishers.publishOrderPlaced,
     publishOrderStatusChanged: publishers.publishOrderStatusChanged,
-    saga: saga(),
+    createSaga: saga,
   })
   await app.ready()
 

@@ -9,10 +9,12 @@ export function saga() {
 
   async function run<TResult>(fn: () => Promise<TResult>) {
     try {
-      return await fn()
+      const result = await fn()
+      compensations.length = 0
+      return result
     } catch (error) {
       await compensate()
-
+      compensations.length = 0
       throw error
     }
   }

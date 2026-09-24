@@ -37,7 +37,7 @@ interface IDeps {
     orderId: string
     status: OrderStatus
   }) => Promise<void>
-  saga: ReturnType<typeof saga>
+  createSaga: typeof saga
 }
 
 export function createOrderService(deps: IDeps) {
@@ -47,16 +47,17 @@ export function createOrderService(deps: IDeps) {
     productClient,
     publishOrderPlaced,
     publishOrderStatusChanged,
-    saga,
+    createSaga,
   } = deps
 
   async function placeOrder(userId: string, userToken: string) {
-    return saga.run(async () => {
+    const s = createSaga()
+    return s.run(async () => {
       const cart = await cartClient.checkout(userId)
-      saga.addCompensation(() => cartClient.restore(cart, userToken))
+      s.addCompensation(() => cartClient.restore(cart, userToken))
 
       const validatedItems = await productClient.validateOrder(cart, userToken)
-      saga.addCompensation(() => productClient.restoreStock(validatedItems))
+      s.addCompensation(() => productClient.restoreStock(validatedItems))
 
       const total = validatedItems.reduce(
         (sum, item) => sum + item.price * item.quantity,

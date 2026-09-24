@@ -40,7 +40,7 @@ async function main() {
     publishOrderPlaced: (data) => producer.publish(Topics.ORDER_PLACED, data),
     publishOrderStatusChanged: (data) =>
       producer.publish(Topics.ORDER_STATUS_CHANGED, data),
-    saga: saga(),
+    createSaga: saga,
   })
 
   await setupConsumers({

@@ -29,7 +29,7 @@ interface IBuildAppOptions {
     orderId: string
     status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled'
   }) => Promise<void>
-  saga: ReturnType<typeof saga>
+  createSaga: typeof saga
 }
 
 export async function buildApp(opts: IBuildAppOptions) {
@@ -39,7 +39,7 @@ export async function buildApp(opts: IBuildAppOptions) {
     productClient,
     publishOrderPlaced,
     publishOrderStatusChanged,
-    saga,
+    createSaga,
   } = opts
 
   const app = Fastify({
@@ -90,7 +90,7 @@ export async function buildApp(opts: IBuildAppOptions) {
     productClient,
     publishOrderPlaced,
     publishOrderStatusChanged,
-    saga,
+    createSaga,
   })
 
   await app.register(async (instance) => {
