@@ -20,4 +20,6 @@ export async function setupConsumers(deps: IDeps) {
     log.info({ orderId: data.orderId }, 'Payment failed — cancelling order')
     await orderService.markAsCancelled(data.orderId)
   })
+
+  await consumer.start()
 }
