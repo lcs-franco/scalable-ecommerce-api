@@ -22,14 +22,27 @@ export function createConsumer(kafka: Kafka, groupId: string) {
 
   const start = async () => {
     await consumer.run({
-      eachMessage: async ({ topic, message }) => {
+      eachMessage: async ({ topic, partition, message }) => {
         if (!message.value) return
 
         const handler = handlers.get(topic as TopicName)
         if (!handler) return
 
-        const parsed = JSON.parse(message.value.toString())
-        const validated = EventSchemas[topic as TopicName].parse(parsed)
+        let validated: EventData<TopicName>
+        try {
+          const parsed = JSON.parse(message.value.toString())
+          validated = EventSchemas[topic as TopicName].parse(parsed)
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.error('Skipping poison message', {
+            topic,
+            partition,
+            offset: message.offset,
+            error: err,
+          })
+          return
+        }
+
         await handler(validated)
       },
     })
