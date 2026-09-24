@@ -9,5 +9,4 @@ dist
 docker-volumes/
 
 specs/*
-.scratch/*
 .claude/*
