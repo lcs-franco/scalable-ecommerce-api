@@ -159,11 +159,21 @@ export function createOrderService(deps: IDeps) {
       throw new InvalidStatusTransition(currentStatus, newStatus)
     }
 
-    const rows = await db
+    const [updated] = await db
       .update(orders)
       .set({ status: newStatus })
-      .where(eq(orders.id, id))
+      .where(and(eq(orders.id, id), eq(orders.status, currentStatus)))
       .returning()
+
+    if (!updated) {
+      const [latest] = await db
+        .select()
+        .from(orders)
+        .where(eq(orders.id, id))
+        .limit(1)
+      if (!latest) throw new OrderNotFound()
+      throw new InvalidStatusTransition(latest.status as OrderStatus, newStatus)
+    }
 
     try {
       await publishOrderStatusChanged({ orderId: id, status: newStatus })
@@ -171,7 +181,7 @@ export function createOrderService(deps: IDeps) {
       // Fire-and-forget — don't fail the request
     }
 
-    return rows[0]
+    return updated
   }
 
   async function markAsPaid(orderId: string) {
@@ -192,29 +202,17 @@ export function createOrderService(deps: IDeps) {
 
   async function markAsCancelled(orderId: string) {
     const [row] = await db
-      .select()
-      .from(orders)
-      .where(eq(orders.id, orderId))
-      .limit(1)
-    if (!row || row.status !== 'pending') return null
-
-    await db
       .update(orders)
       .set({ status: 'cancelled' })
-      .where(eq(orders.id, orderId))
+      .where(and(eq(orders.id, orderId), eq(orders.status, 'pending')))
+      .returning()
+    if (!row) return
 
     try {
       await publishOrderStatusChanged({ orderId, status: 'cancelled' })
     } catch {
       // Fire-and-forget — don't fail the consumer
     }
-
-    const items = await db
-      .select()
-      .from(orderItems)
-      .where(eq(orderItems.orderId, orderId))
-
-    return items.map((i) => ({ productId: i.productId, quantity: i.quantity }))
   }
 
   return {
