@@ -98,7 +98,7 @@ Copy `.env.example` to `.env` and adjust values. Key variables: `DATABASE_URL`, 
 
 ## Issue Tracking
 
-Issues are tracked as Markdown files in `issues/`. MVP milestones live under `issues/mvp-platform/`; standalone issues are at the top level.
+Issues are tracked in GitHub Issues (`gh issue list`, `gh issue view <n>`). MVP work is grouped under the `MVP Platform` milestone. Status labels: `ready` (specced, can be picked up) and `todo` (needs refinement). Type labels: `enhancement`, `bug`, `refactor`, `documentation`. Reference issues in PRs with `Closes #<n>` so they close on merge.
 
 ## CI
 

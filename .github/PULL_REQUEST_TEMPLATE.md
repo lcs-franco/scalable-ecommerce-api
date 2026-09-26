@@ -1,4 +1,6 @@
 <!-- Title: use conventional commits (feat:, fix:, chore:, docs:, refactor:) -->
+<!-- Language: always write the title and description in English -->
+<!-- Linked issue: add "Closes #<n>" so the issue closes on merge -->
 
 ## Summary
 
