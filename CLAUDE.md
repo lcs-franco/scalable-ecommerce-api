@@ -44,15 +44,16 @@ pnpm --filter @ecommerce/product-service seed
 
 ## Architecture
 
-**Monorepo** using pnpm workspaces with three shared packages and seven microservices (4 implemented, 3 placeholder).
+**Monorepo** using pnpm workspaces with four shared packages and seven microservices (4 implemented, 3 placeholder).
 
 ### Shared Packages (`packages/`)
 
-| Package             | Purpose                                                                                     |
-| ------------------- | ------------------------------------------------------------------------------------------- |
-| `@ecommerce/auth`   | Fastify plugin wrapping `@fastify/jwt`. Routes opt out via `{ config: { skipAuth: true } }` |
-| `@ecommerce/events` | Kafka topic constants, Zod event schemas, `createProducer`/`createConsumer` factories       |
-| `@ecommerce/logger` | Pino logger factory with per-service configuration                                          |
+| Package             | Purpose                                                                                                                            |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `@ecommerce/auth`   | Fastify plugin wrapping `@fastify/jwt`. Routes opt out via `{ config: { skipAuth: true } }`; path prefixes via `publicPrefixes`    |
+| `@ecommerce/docs`   | `docsPlugin`: OpenAPI (Swagger + Scalar) at `DOCS_PREFIX` (`/docs`) from Zod route schemas; `schema: { hide: true }` hides a route |
+| `@ecommerce/events` | Kafka topic constants, Zod event schemas, `createProducer`/`createConsumer` factories                                              |
+| `@ecommerce/logger` | Pino logger factory with per-service configuration                                                                                 |
 
 Packages must be built (`pnpm build`) before services can import them.
 
@@ -98,7 +99,7 @@ Copy `.env.example` to `.env` and adjust values. Key variables: `DATABASE_URL`, 
 
 ## Issue Tracking
 
-Issues are tracked in GitHub Issues (`gh issue list`, `gh issue view <n>`). MVP work is grouped under the `MVP Platform` milestone. Status labels: `ready` (specced, can be picked up) and `todo` (needs refinement). Type labels: `enhancement`, `bug`, `refactor`, `documentation`. Reference issues in PRs with `Closes #<n>` so they close on merge.
+Issues are tracked in GitHub Issues (`gh issue list`, `gh issue view <n>`). MVP work is grouped under the `MVP Platform` milestone. Triage (state) labels: `needs-triage` (maintainer needs to evaluate), `needs-info` (waiting on reporter), `ready-to-implement` (fully specced, ready to be implemented), `wontfix` (will not be actioned). Category labels: `enhancement`, `bug`, `refactor`, `documentation`. Reference issues in PRs with `Closes #<n>` so they close on merge.
 
 ## CI
 

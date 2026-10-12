@@ -101,7 +101,10 @@ export async function productRoutes(fastify: FastifyInstance, deps: IDeps) {
   // Authenticated via shared secret (x-internal-token), not JWT.
   app.post(
     '/products/restore-stock',
-    { config: { skipAuth: true }, schema: { body: RestoreStockBodySchema } },
+    {
+      config: { skipAuth: true },
+      schema: { body: RestoreStockBodySchema, hide: true },
+    },
     async (request, reply) => {
       requireInternalToken(
         request.headers['x-internal-token'] as string,

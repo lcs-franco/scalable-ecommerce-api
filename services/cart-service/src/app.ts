@@ -1,4 +1,5 @@
 import { authPlugin } from '@ecommerce/auth'
+import { DOCS_PREFIX, docsPlugin } from '@ecommerce/docs'
 import { getLoggerConfig } from '@ecommerce/logger'
 import Fastify, { FastifyError } from 'fastify'
 import {
@@ -57,7 +58,8 @@ export async function buildApp(opts: IBuildAppOptions) {
     },
   )
 
-  await app.register(authPlugin)
+  await app.register(docsPlugin, { title: 'cart-service' })
+  await app.register(authPlugin, { publicPrefixes: [DOCS_PREFIX] })
 
   const cartService = createCartService(opts.redis)
   const productClient = createProductClient(opts.productServiceUrl)

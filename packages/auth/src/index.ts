@@ -20,8 +20,20 @@ declare module '@fastify/jwt' {
   }
 }
 
-export const authPlugin = fp(
-  async function auth(app: FastifyInstance) {
+export interface IAuthOptions {
+  publicPrefixes?: string[]
+}
+
+function isPublicPath(url: string, publicPrefixes: string[]) {
+  const path = url.split('?')[0]
+  return publicPrefixes.some(
+    (prefix) => path === prefix || path.startsWith(prefix + '/'),
+  )
+}
+
+export const authPlugin = fp<IAuthOptions>(
+  async function auth(app: FastifyInstance, opts) {
+    const { publicPrefixes = [] } = opts
     const secret = process.env.JWT_SECRET
     if (!secret) throw new Error('JWT_SECRET env var is required')
 
@@ -29,6 +41,7 @@ export const authPlugin = fp(
 
     app.addHook('onRequest', async (request, _reply) => {
       if ((request.routeOptions.config as any)?.skipAuth) return
+      if (isPublicPath(request.url, publicPrefixes)) return
 
       await request.jwtVerify()
     })

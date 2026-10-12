@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@ecommerce/auth": "workspace:*",
+    "@ecommerce/docs": "workspace:*",
     "@ecommerce/events": "workspace:*",
     "@ecommerce/logger": "workspace:*",
     "@fastify/jwt": "^9.0.0",
