@@ -98,7 +98,7 @@ Copy `.env.example` to `.env` and adjust values. Key variables: `DATABASE_URL`, 
 
 ## Issue Tracking
 
-Issues are tracked in GitHub Issues (`gh issue list`, `gh issue view <n>`). MVP work is grouped under the `MVP Platform` milestone. Status labels: `ready` (specced, can be picked up) and `todo` (needs refinement). Type labels: `enhancement`, `bug`, `refactor`, `documentation`. Reference issues in PRs with `Closes #<n>` so they close on merge.
+Issues are tracked in GitHub Issues (`gh issue list`, `gh issue view <n>`). MVP work is grouped under the `MVP Platform` milestone. Triage (state) labels: `needs-triage` (maintainer needs to evaluate), `needs-info` (waiting on reporter), `ready-to-implement` (fully specced, ready to be implemented), `wontfix` (will not be actioned). Category labels: `enhancement`, `bug`, `refactor`, `documentation`. Reference issues in PRs with `Closes #<n>` so they close on merge.
 
 ## CI
 
