@@ -44,15 +44,16 @@ pnpm --filter @ecommerce/product-service seed
 
 ## Architecture
 
-**Monorepo** using pnpm workspaces with three shared packages and seven microservices (4 implemented, 3 placeholder).
+**Monorepo** using pnpm workspaces with four shared packages and seven microservices (4 implemented, 3 placeholder).
 
 ### Shared Packages (`packages/`)
 
-| Package             | Purpose                                                                                     |
-| ------------------- | ------------------------------------------------------------------------------------------- |
-| `@ecommerce/auth`   | Fastify plugin wrapping `@fastify/jwt`. Routes opt out via `{ config: { skipAuth: true } }` |
-| `@ecommerce/events` | Kafka topic constants, Zod event schemas, `createProducer`/`createConsumer` factories       |
-| `@ecommerce/logger` | Pino logger factory with per-service configuration                                          |
+| Package             | Purpose                                                                                                                            |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `@ecommerce/auth`   | Fastify plugin wrapping `@fastify/jwt`. Routes opt out via `{ config: { skipAuth: true } }`; path prefixes via `publicPrefixes`    |
+| `@ecommerce/docs`   | `docsPlugin`: OpenAPI (Swagger + Scalar) at `DOCS_PREFIX` (`/docs`) from Zod route schemas; `schema: { hide: true }` hides a route |
+| `@ecommerce/events` | Kafka topic constants, Zod event schemas, `createProducer`/`createConsumer` factories                                              |
+| `@ecommerce/logger` | Pino logger factory with per-service configuration                                                                                 |
 
 Packages must be built (`pnpm build`) before services can import them.
 

@@ -79,7 +79,7 @@ export async function cartRoutes(fastify: FastifyInstance, deps: IDeps) {
   // Authenticated via shared secret (x-internal-token), not JWT.
   app.post(
     '/cart/checkout',
-    { config: { skipAuth: true } },
+    { config: { skipAuth: true }, schema: { hide: true } },
     async (request, reply) => {
       const token = request.headers['x-internal-token'] as string
       if (token !== internalServiceToken) {
