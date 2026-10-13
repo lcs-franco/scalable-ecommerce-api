@@ -1,13 +1,14 @@
+export { createConsumer } from './consumer.js'
+export { createProducer } from './producer.js'
 export {
-  Topics,
-  type TopicName,
-  type EventData,
   EventSchemas,
-  UserRegisteredSchema,
   OrderPlacedSchema,
+  OrderStatusChangedSchema,
   PaymentConfirmedSchema,
   PaymentFailedSchema,
-  OrderStatusChangedSchema,
+  RecipientSchema,
+  Topics,
+  UserRegisteredSchema,
+  type EventData,
+  type TopicName,
 } from './schemas.js'
-export { createProducer } from './producer.js'
-export { createConsumer } from './consumer.js'
