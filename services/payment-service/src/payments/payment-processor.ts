@@ -1,7 +1,9 @@
 export type ProviderName = 'stripe'
 
+export type Cents = number
+
 export interface IProcessPaymentInput {
-  amount: number // cents
+  amount: Cents
   currency: string
   idempotencyKey: `order-${string}`
   metadata: Record<string, string>
