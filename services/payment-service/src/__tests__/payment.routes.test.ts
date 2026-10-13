@@ -31,6 +31,7 @@ describe('payment routes', () => {
       .values({
         orderId: crypto.randomUUID(),
         userId: DEFAULT_USER_ID,
+        userEmail: 'user@test.com',
         amount: 3000,
         status: 'confirmed',
         provider: 'stripe',

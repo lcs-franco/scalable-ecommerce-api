@@ -39,6 +39,7 @@ describe('paymentService.processOrderPlaced', () => {
     expect(row.status).toBe('confirmed')
     expect(row.amount).toBe(3000)
     expect(row.userId).toBe(event.userId)
+    expect(row.userEmail).toBe(event.email)
     expect(row.provider).toBe('stripe')
     expect(row.providerPaymentId).toBe('pi_fake_1')
     expect(row.failureReason).toBeNull()
@@ -49,6 +50,8 @@ describe('paymentService.processOrderPlaced', () => {
         data: {
           orderId: event.orderId,
           paymentId: row.id,
+          userId: event.userId,
+          email: event.email,
           amount: 3000,
           provider: 'stripe',
         },
@@ -92,6 +95,8 @@ describe('paymentService.processOrderPlaced', () => {
         data: {
           orderId: event.orderId,
           paymentId: row.id,
+          userId: event.userId,
+          email: event.email,
           reason: 'Your card was declined.',
         },
       },
@@ -119,6 +124,7 @@ describe('paymentService.processOrderPlaced', () => {
       .values({
         orderId: event.orderId,
         userId: event.userId,
+        userEmail: event.email,
         amount: event.total,
       })
       .returning()

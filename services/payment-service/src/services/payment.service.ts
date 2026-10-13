@@ -58,10 +58,12 @@ export function createPaymentService(deps: IDeps) {
   // Publishes the event matching a terminal row. Used both after processing
   // and when a redelivered event finds an already-terminal payment.
   async function publishOutcome(payment: Payment) {
+    const recipient = { userId: payment.userId, email: payment.userEmail }
     if (payment.status === 'confirmed') {
       await publishPaymentConfirmed({
         orderId: payment.orderId,
         paymentId: payment.id,
+        ...recipient,
         amount: payment.amount,
         provider: payment.provider ?? processor.name,
       })
@@ -69,6 +71,7 @@ export function createPaymentService(deps: IDeps) {
       await publishPaymentFailed({
         orderId: payment.orderId,
         paymentId: payment.id,
+        ...recipient,
         reason: payment.failureReason ?? 'unknown',
       })
     }
@@ -79,6 +82,7 @@ export function createPaymentService(deps: IDeps) {
       .insert(payments)
       .values({
         userId: event.userId,
+        userEmail: event.email,
         orderId: event.orderId,
         amount: event.total,
       })

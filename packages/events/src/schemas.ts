@@ -34,6 +34,8 @@ export const OrderPlacedSchema = z.object({
 export const PaymentConfirmedSchema = z.object({
   orderId: z.string().uuid(),
   paymentId: z.string().uuid(),
+  userId: z.string().uuid(),
+  email: z.string().email(),
   amount: z.number().int(),
   provider: z.string(),
 })
@@ -41,6 +43,8 @@ export const PaymentConfirmedSchema = z.object({
 export const PaymentFailedSchema = z.object({
   orderId: z.string().uuid(),
   paymentId: z.string().uuid(),
+  userId: z.string().uuid(),
+  email: z.string().email(),
   reason: z.string(),
 })
 

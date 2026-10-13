@@ -1,0 +1,1 @@
+ALTER TABLE "payments" ADD COLUMN "user_email" varchar NOT NULL;
