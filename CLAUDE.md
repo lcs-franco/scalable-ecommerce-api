@@ -44,7 +44,7 @@ pnpm --filter @ecommerce/product-service seed
 
 ## Architecture
 
-**Monorepo** using pnpm workspaces with four shared packages and seven microservices (4 implemented, 3 placeholder).
+**Monorepo** using pnpm workspaces with four shared packages and seven microservices (5 implemented, 2 placeholder).
 
 ### Shared Packages (`packages/`)
 
@@ -66,7 +66,7 @@ Packages must be built (`pnpm build`) before services can import them.
 | cart-service         | 3003 | Redis                   | Implemented |
 | order-service        | 3004 | PostgreSQL (order_db)   | Implemented |
 | api-gateway          | 3000 | —                       | Placeholder |
-| payment-service      | 3005 | PostgreSQL (payment_db) | Placeholder |
+| payment-service      | 3005 | PostgreSQL (payment_db) | Implemented |
 | notification-service | 3006 | —                       | Placeholder |
 
 ### Communication Patterns
