@@ -6,6 +6,7 @@ import Stripe from 'stripe'
 import { buildApp } from './app.js'
 import { config } from './config/env.js'
 import { createDb } from './db/index.js'
+import { setupConsumers } from './kafka/consumers.js'
 import { createStripeProcessor } from './payments/stripe.processor.js'
 
 async function main() {
@@ -41,10 +42,11 @@ async function main() {
     },
   })
 
-  await consumer.subscribe(Topics.ORDER_PLACED, (data) =>
-    app.paymentService.processOrderPlaced(data),
-  )
-  await consumer.start()
+  await setupConsumers({
+    consumer,
+    paymentService: app.paymentService,
+    log,
+  })
 
   const shutdown = async () => {
     await app.close()
