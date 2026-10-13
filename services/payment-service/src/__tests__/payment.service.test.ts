@@ -108,9 +108,13 @@ describe('paymentService.processOrderPlaced', () => {
     await ctx.app.paymentService.processOrderPlaced(event)
     const first = ctx.publishers.events[0]
 
-    // A later processor result must not leak into the redelivery
+    // Neither a later processor result nor the redelivered event's fields may
+    // leak into the republished payload: it comes from the stored row
     ctx.fake.willReturn({ success: false, reason: 'should not be used' })
-    await ctx.app.paymentService.processOrderPlaced(event)
+    await ctx.app.paymentService.processOrderPlaced({
+      ...event,
+      email: 'changed@test.com',
+    })
 
     expect(ctx.fake.calls).toHaveLength(1)
     expect(ctx.publishers.events).toEqual([first, first])
