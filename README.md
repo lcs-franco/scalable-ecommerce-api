@@ -50,7 +50,7 @@ services/
   product-service/      → Product catalog and categories
   cart-service/         → Shopping cart (Redis-backed)
   order-service/        → Order placement and lifecycle
-  payment-service/      → Stripe integration (+ mock mode)
+  payment-service/      → Stripe integration (test mode)
   notification-service/ → Email (Ethereal) and event-driven alerts
 
 packages/
