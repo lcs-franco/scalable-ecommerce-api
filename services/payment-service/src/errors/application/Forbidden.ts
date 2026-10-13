@@ -6,7 +6,7 @@ export class Forbidden extends ApplicationError {
   public override code = ErrorCode.FORBIDDEN
 
   constructor() {
-    super('Admin access required')
+    super('You do not have access to this resource')
     this.name = 'Forbidden'
   }
 }
