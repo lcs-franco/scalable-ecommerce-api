@@ -1,9 +1,12 @@
 import type { EventData, Topics } from '@ecommerce/events'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, type SQL } from 'drizzle-orm'
 import type { Db } from '../db/index.js'
 import { type Payment, payments } from '../db/schema.js'
 import { PaymentNotFound } from '../errors/index.js'
-import type { IPaymentProcessor } from '../payments/payment-processor.js'
+import type {
+  IPaymentProcessor,
+  PaymentResult,
+} from '../payments/payment-processor.js'
 
 const CURRENCY = 'usd'
 
@@ -23,14 +26,31 @@ interface IDeps extends IPaymentPublishers {
   processor: IPaymentProcessor
 }
 
+// Maps what the provider returned to the columns of the terminal row.
+function toOutcomeUpdate(providerResult: PaymentResult) {
+  return providerResult.success
+    ? {
+        status: 'confirmed' as const,
+        providerPaymentId: providerResult.providerPaymentId,
+        failureReason: null,
+      }
+    : {
+        status: 'failed' as const,
+        providerPaymentId: providerResult.providerPaymentId ?? null,
+        failureReason: providerResult.reason,
+      }
+}
+
 export function createPaymentService(deps: IDeps) {
   const { db, processor, publishPaymentConfirmed, publishPaymentFailed } = deps
 
+  async function selectPayment(where: SQL) {
+    const [payment] = await db.select().from(payments).where(where)
+    return payment
+  }
+
   async function findByOrderId(orderId: string) {
-    const [payment] = await db
-      .select()
-      .from(payments)
-      .where(eq(payments.orderId, orderId))
+    const payment = await selectPayment(eq(payments.orderId, orderId))
     if (!payment) throw new PaymentNotFound()
     return payment
   }
@@ -45,9 +65,7 @@ export function createPaymentService(deps: IDeps) {
         amount: payment.amount,
         provider: payment.provider ?? processor.name,
       })
-      return
-    }
-    if (payment.status === 'failed') {
+    } else if (payment.status === 'failed') {
       await publishPaymentFailed({
         orderId: payment.orderId,
         paymentId: payment.id,
@@ -68,50 +86,30 @@ export function createPaymentService(deps: IDeps) {
       .returning()
 
     const payment =
-      inserted ??
-      (
-        await db
-          .select()
-          .from(payments)
-          .where(eq(payments.orderId, event.orderId))
-      )[0]
+      inserted ?? (await selectPayment(eq(payments.orderId, event.orderId)))
 
-    if (payment.status === 'confirmed' || payment.status === 'failed') {
+    if (payment.status !== 'pending') {
       await publishOutcome(payment)
-
       return
     }
 
-    const paymentResult = await processor.processPayment({
+    const providerResult = await processor.processPayment({
       amount: payment.amount,
       currency: CURRENCY,
       idempotencyKey: `order-${payment.orderId}`,
       metadata: { orderId: payment.orderId, userId: payment.userId },
     })
 
-    const result = paymentResult.success
-      ? {
-          status: 'confirmed' as const,
-          providerPaymentId: paymentResult.providerPaymentId,
-          failureReason: null,
-        }
-      : {
-          status: 'failed' as const,
-          providerPaymentId: paymentResult.providerPaymentId ?? null,
-          failureReason: paymentResult.reason,
-        }
-
-    const [updatedPayment] = await db
+    const [updated] = await db
       .update(payments)
-      .set({ ...result, provider: processor.name })
+      .set({ ...toOutcomeUpdate(providerResult), provider: processor.name })
       .where(and(eq(payments.id, payment.id), eq(payments.status, 'pending')))
       .returning()
 
-    const updated =
-      updatedPayment ??
-      (await db.select().from(payments).where(eq(payments.id, payment.id)))[0]
-
-    await publishOutcome(updated)
+    // 0 rows updated: another consumer finished first, publish its outcome.
+    await publishOutcome(
+      updated ?? (await selectPayment(eq(payments.id, payment.id))),
+    )
   }
 
   return { processOrderPlaced, findByOrderId }
