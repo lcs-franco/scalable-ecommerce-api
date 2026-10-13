@@ -3,8 +3,12 @@ import {
   adminToken,
   cleanDb,
   createTestApp,
+  DEFAULT_USER_EMAIL,
+  DEFAULT_USER_ID,
   mockCartClient,
   mockProductClient,
+  PRODUCT_1,
+  PRODUCT_2,
   userToken,
 } from './helpers.js'
 
@@ -56,11 +60,33 @@ describe('order routes', () => {
       )
     })
 
-    it('should publish order.placed event', async () => {
-      await placeTestOrder()
+    it('should publish order.placed event with recipient and item names', async () => {
+      const res = await placeTestOrder()
 
       expect(publishers.events).toHaveLength(1)
-      expect(publishers.events[0].topic).toBe('order.placed')
+      expect(publishers.events[0]).toEqual({
+        topic: 'order.placed',
+        data: {
+          orderId: res.json().id,
+          userId: DEFAULT_USER_ID,
+          email: DEFAULT_USER_EMAIL,
+          items: [
+            {
+              productId: PRODUCT_1,
+              name: `Product ${PRODUCT_1}`,
+              quantity: 2,
+              price: 1000,
+            },
+            {
+              productId: PRODUCT_2,
+              name: `Product ${PRODUCT_2}`,
+              quantity: 1,
+              price: 1000,
+            },
+          ],
+          total: 3000,
+        },
+      })
     })
 
     it('should return 401 without auth', async () => {
@@ -218,7 +244,12 @@ describe('order routes', () => {
         expect(ctx.publishers.events).toHaveLength(1)
         expect(ctx.publishers.events[0]).toEqual({
           topic: 'order.status-changed',
-          data: { orderId, status: 'paid' },
+          data: {
+            orderId,
+            userId: DEFAULT_USER_ID,
+            email: DEFAULT_USER_EMAIL,
+            status: 'paid',
+          },
         })
       } finally {
         await ctx.app.close()
@@ -264,7 +295,12 @@ describe('order routes', () => {
         expect(ctx.publishers.events).toHaveLength(1)
         expect(ctx.publishers.events[0]).toEqual({
           topic: 'order.status-changed',
-          data: { orderId, status: 'cancelled' },
+          data: {
+            orderId,
+            userId: DEFAULT_USER_ID,
+            email: DEFAULT_USER_EMAIL,
+            status: 'cancelled',
+          },
         })
       } finally {
         await ctx.app.close()
@@ -324,8 +360,17 @@ describe('order routes', () => {
         payload: { status: 'paid' },
       })
 
+      // Recipient is the order's customer, not the admin who changed it
       expect(publishers.events).toHaveLength(1)
-      expect(publishers.events[0].topic).toBe('order.status-changed')
+      expect(publishers.events[0]).toEqual({
+        topic: 'order.status-changed',
+        data: {
+          orderId,
+          userId: DEFAULT_USER_ID,
+          email: DEFAULT_USER_EMAIL,
+          status: 'paid',
+        },
+      })
     })
 
     it('should reject invalid status transition', async () => {

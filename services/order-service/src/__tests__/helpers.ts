@@ -9,8 +9,8 @@ const TEST_DATABASE_URL =
   process.env.DATABASE_URL ??
   'postgresql://ecommerce:ecommerce_dev@localhost:5432/order_db'
 
-const PRODUCT_1 = '00000000-0000-0000-0000-000000000101'
-const PRODUCT_2 = '00000000-0000-0000-0000-000000000102'
+export const PRODUCT_1 = '00000000-0000-0000-0000-000000000101'
+export const PRODUCT_2 = '00000000-0000-0000-0000-000000000102'
 
 export function mockCartClient() {
   return {
@@ -72,7 +72,8 @@ export async function createTestApp(overrides?: {
 }
 
 const ADMIN_ID = '00000000-0000-0000-0000-000000000001'
-const DEFAULT_USER_ID = '00000000-0000-0000-0000-000000000002'
+export const DEFAULT_USER_ID = '00000000-0000-0000-0000-000000000002'
+export const DEFAULT_USER_EMAIL = 'user@test.com'
 
 export function adminToken(
   app: Awaited<ReturnType<typeof createTestApp>>['app'],
@@ -90,7 +91,7 @@ export function userToken(
 ) {
   return app.jwt.sign({
     userId,
-    email: 'user@test.com',
+    email: DEFAULT_USER_EMAIL,
     role: 'user',
   })
 }

@@ -1,5 +1,6 @@
 import { authPlugin } from '@ecommerce/auth'
 import { DOCS_PREFIX, docsPlugin } from '@ecommerce/docs'
+import type { EventData, Topics } from '@ecommerce/events'
 import { getLoggerConfig } from '@ecommerce/logger'
 import Fastify, { FastifyError } from 'fastify'
 import {
@@ -20,16 +21,12 @@ interface IBuildAppOptions {
   db: Db
   cartClient: ReturnType<typeof createCartClient>
   productClient: ReturnType<typeof createProductClient>
-  publishOrderPlaced: (data: {
-    orderId: string
-    userId: string
-    items: { productId: string; quantity: number; price: number }[]
-    total: number
-  }) => Promise<void>
-  publishOrderStatusChanged: (data: {
-    orderId: string
-    status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled'
-  }) => Promise<void>
+  publishOrderPlaced: (
+    data: EventData<typeof Topics.ORDER_PLACED>,
+  ) => Promise<void>
+  publishOrderStatusChanged: (
+    data: EventData<typeof Topics.ORDER_STATUS_CHANGED>,
+  ) => Promise<void>
   createSaga: typeof saga
 }
 

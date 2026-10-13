@@ -16,36 +16,49 @@ export const UserRegisteredSchema = z.object({
   name: z.string(),
 })
 
-export const OrderPlacedSchema = z.object({
-  orderId: z.string().uuid(),
+export const RecipientSchema = z.object({
   userId: z.string().uuid(),
-  items: z.array(
-    z.object({
-      productId: z.string().uuid(),
-      quantity: z.number().int(),
-      price: z.number().int(),
-    }),
-  ),
-  total: z.number().int(),
+  email: z.string().email(),
 })
 
-export const PaymentConfirmedSchema = z.object({
-  orderId: z.string().uuid(),
-  paymentId: z.string().uuid(),
-  amount: z.number().int(),
-  provider: z.string(),
-})
+export const OrderPlacedSchema = z
+  .object({
+    orderId: z.string().uuid(),
+    items: z.array(
+      z.object({
+        productId: z.string().uuid(),
+        name: z.string(),
+        quantity: z.number().int(),
+        price: z.number().int(),
+      }),
+    ),
+    total: z.number().int(),
+  })
+  .merge(RecipientSchema)
 
-export const PaymentFailedSchema = z.object({
-  orderId: z.string().uuid(),
-  paymentId: z.string().uuid(),
-  reason: z.string(),
-})
+export const PaymentConfirmedSchema = z
+  .object({
+    orderId: z.string().uuid(),
+    paymentId: z.string().uuid(),
+    amount: z.number().int(),
+    provider: z.string(),
+  })
+  .merge(RecipientSchema)
 
-export const OrderStatusChangedSchema = z.object({
-  orderId: z.string().uuid(),
-  status: z.enum(['pending', 'paid', 'shipped', 'delivered', 'cancelled']),
-})
+export const PaymentFailedSchema = z
+  .object({
+    orderId: z.string().uuid(),
+    paymentId: z.string().uuid(),
+    reason: z.string(),
+  })
+  .merge(RecipientSchema)
+
+export const OrderStatusChangedSchema = z
+  .object({
+    orderId: z.string().uuid(),
+    status: z.enum(['pending', 'paid', 'shipped', 'delivered', 'cancelled']),
+  })
+  .merge(RecipientSchema)
 
 export const EventSchemas = {
   [Topics.USER_REGISTERED]: UserRegisteredSchema,

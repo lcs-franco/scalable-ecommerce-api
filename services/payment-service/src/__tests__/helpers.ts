@@ -14,6 +14,7 @@ const TEST_DATABASE_URL =
 
 export const ADMIN_ID = '00000000-0000-0000-0000-000000000001'
 export const DEFAULT_USER_ID = '00000000-0000-0000-0000-000000000002'
+export const DEFAULT_USER_EMAIL = 'user@test.com'
 export const OTHER_USER_ID = '00000000-0000-0000-0000-000000000003'
 
 export function fakeProcessor() {
@@ -78,7 +79,7 @@ export function adminToken(app: App) {
 export function userToken(app: App, userId = DEFAULT_USER_ID) {
   return app.jwt.sign({
     userId,
-    email: 'user@test.com',
+    email: DEFAULT_USER_EMAIL,
     role: 'user',
   })
 }
@@ -89,9 +90,11 @@ export function orderPlacedEvent(
   return {
     orderId: overrides?.orderId ?? crypto.randomUUID(),
     userId: overrides?.userId ?? DEFAULT_USER_ID,
+    email: DEFAULT_USER_EMAIL,
     items: [
       {
         productId: '00000000-0000-0000-0000-000000000101',
+        name: 'Product 101',
         quantity: 2,
         price: 1500,
       },

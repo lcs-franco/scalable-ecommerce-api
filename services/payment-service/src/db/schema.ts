@@ -19,6 +19,7 @@ export const payments = pgTable('payments', {
   id: uuid('id').defaultRandom().primaryKey(),
   orderId: uuid('order_id').notNull().unique(),
   userId: uuid('user_id').notNull(),
+  userEmail: varchar('user_email').notNull(),
   amount: integer('amount').notNull(),
   status: paymentStatusEnum('status').notNull().default('pending'),
   provider: text('provider').$type<ProviderName>(),

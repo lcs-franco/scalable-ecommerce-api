@@ -39,6 +39,7 @@ describe('paymentService.processOrderPlaced', () => {
     expect(row.status).toBe('confirmed')
     expect(row.amount).toBe(3000)
     expect(row.userId).toBe(event.userId)
+    expect(row.userEmail).toBe(event.email)
     expect(row.provider).toBe('stripe')
     expect(row.providerPaymentId).toBe('pi_fake_1')
     expect(row.failureReason).toBeNull()
@@ -49,6 +50,8 @@ describe('paymentService.processOrderPlaced', () => {
         data: {
           orderId: event.orderId,
           paymentId: row.id,
+          userId: event.userId,
+          email: event.email,
           amount: 3000,
           provider: 'stripe',
         },
@@ -92,6 +95,8 @@ describe('paymentService.processOrderPlaced', () => {
         data: {
           orderId: event.orderId,
           paymentId: row.id,
+          userId: event.userId,
+          email: event.email,
           reason: 'Your card was declined.',
         },
       },
@@ -103,9 +108,13 @@ describe('paymentService.processOrderPlaced', () => {
     await ctx.app.paymentService.processOrderPlaced(event)
     const first = ctx.publishers.events[0]
 
-    // A later processor result must not leak into the redelivery
+    // Neither a later processor result nor the redelivered event's fields may
+    // leak into the republished payload: it comes from the stored row
     ctx.fake.willReturn({ success: false, reason: 'should not be used' })
-    await ctx.app.paymentService.processOrderPlaced(event)
+    await ctx.app.paymentService.processOrderPlaced({
+      ...event,
+      email: 'changed@test.com',
+    })
 
     expect(ctx.fake.calls).toHaveLength(1)
     expect(ctx.publishers.events).toEqual([first, first])
@@ -119,6 +128,7 @@ describe('paymentService.processOrderPlaced', () => {
       .values({
         orderId: event.orderId,
         userId: event.userId,
+        userEmail: event.email,
         amount: event.total,
       })
       .returning()
