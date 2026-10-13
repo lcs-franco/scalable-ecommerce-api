@@ -73,6 +73,7 @@ export async function createTestApp(overrides?: {
 
 const ADMIN_ID = '00000000-0000-0000-0000-000000000001'
 export const DEFAULT_USER_ID = '00000000-0000-0000-0000-000000000002'
+export const DEFAULT_USER_EMAIL = 'user@test.com'
 
 export function adminToken(
   app: Awaited<ReturnType<typeof createTestApp>>['app'],
@@ -90,7 +91,7 @@ export function userToken(
 ) {
   return app.jwt.sign({
     userId,
-    email: 'user@test.com',
+    email: DEFAULT_USER_EMAIL,
     role: 'user',
   })
 }

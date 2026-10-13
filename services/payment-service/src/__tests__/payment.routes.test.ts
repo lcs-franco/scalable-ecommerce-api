@@ -4,6 +4,7 @@ import {
   adminToken,
   cleanDb,
   createTestApp,
+  DEFAULT_USER_EMAIL,
   DEFAULT_USER_ID,
   OTHER_USER_ID,
   userToken,
@@ -31,7 +32,7 @@ describe('payment routes', () => {
       .values({
         orderId: crypto.randomUUID(),
         userId: DEFAULT_USER_ID,
-        userEmail: 'user@test.com',
+        userEmail: DEFAULT_USER_EMAIL,
         amount: 3000,
         status: 'confirmed',
         provider: 'stripe',

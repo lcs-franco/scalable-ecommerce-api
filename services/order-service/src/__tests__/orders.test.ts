@@ -3,6 +3,7 @@ import {
   adminToken,
   cleanDb,
   createTestApp,
+  DEFAULT_USER_EMAIL,
   DEFAULT_USER_ID,
   mockCartClient,
   mockProductClient,
@@ -68,7 +69,7 @@ describe('order routes', () => {
         data: {
           orderId: res.json().id,
           userId: DEFAULT_USER_ID,
-          email: 'user@test.com',
+          email: DEFAULT_USER_EMAIL,
           items: [
             {
               productId: PRODUCT_1,
@@ -246,7 +247,7 @@ describe('order routes', () => {
           data: {
             orderId,
             userId: DEFAULT_USER_ID,
-            email: 'user@test.com',
+            email: DEFAULT_USER_EMAIL,
             status: 'paid',
           },
         })
@@ -297,7 +298,7 @@ describe('order routes', () => {
           data: {
             orderId,
             userId: DEFAULT_USER_ID,
-            email: 'user@test.com',
+            email: DEFAULT_USER_EMAIL,
             status: 'cancelled',
           },
         })
@@ -366,7 +367,7 @@ describe('order routes', () => {
         data: {
           orderId,
           userId: DEFAULT_USER_ID,
-          email: 'user@test.com',
+          email: DEFAULT_USER_EMAIL,
           status: 'paid',
         },
       })
