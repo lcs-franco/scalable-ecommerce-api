@@ -89,9 +89,11 @@ export function orderPlacedEvent(
   return {
     orderId: overrides?.orderId ?? crypto.randomUUID(),
     userId: overrides?.userId ?? DEFAULT_USER_ID,
+    email: 'user@test.com',
     items: [
       {
         productId: '00000000-0000-0000-0000-000000000101',
+        name: 'Product 101',
         quantity: 2,
         price: 1500,
       },

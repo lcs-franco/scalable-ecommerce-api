@@ -8,6 +8,13 @@
       "when": 1790166199238,
       "tag": "0000_striped_jackpot",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791918830528,
+      "tag": "0001_dizzy_lightspeed",
+      "breakpoints": true
     }
   ]
 }

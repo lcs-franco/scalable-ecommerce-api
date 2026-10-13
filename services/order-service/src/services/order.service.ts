@@ -1,3 +1,5 @@
+import type { ITokenPayload } from '@ecommerce/auth'
+import type { EventData, Topics } from '@ecommerce/events'
 import { and, desc, eq, sql } from 'drizzle-orm'
 import type { createCartClient } from '../clients/cart.client.js'
 import type { createProductClient } from '../clients/product.client.js'
@@ -27,17 +29,24 @@ interface IDeps {
   db: Db
   cartClient: ReturnType<typeof createCartClient>
   productClient: ReturnType<typeof createProductClient>
-  publishOrderPlaced: (data: {
-    orderId: string
-    userId: string
-    items: { productId: string; quantity: number; price: number }[]
-    total: number
-  }) => Promise<void>
-  publishOrderStatusChanged: (data: {
-    orderId: string
-    status: OrderStatus
-  }) => Promise<void>
+  publishOrderPlaced: (
+    data: EventData<typeof Topics.ORDER_PLACED>,
+  ) => Promise<void>
+  publishOrderStatusChanged: (
+    data: EventData<typeof Topics.ORDER_STATUS_CHANGED>,
+  ) => Promise<void>
   createSaga: typeof saga
+}
+
+function toStatusChanged(
+  order: typeof orders.$inferSelect,
+): EventData<typeof Topics.ORDER_STATUS_CHANGED> {
+  return {
+    orderId: order.id,
+    userId: order.userId,
+    email: order.userEmail,
+    status: order.status,
+  }
 }
 
 export function createOrderService(deps: IDeps) {
@@ -50,7 +59,11 @@ export function createOrderService(deps: IDeps) {
     createSaga,
   } = deps
 
-  async function placeOrder(userId: string, userToken: string) {
+  async function placeOrder(
+    user: Pick<ITokenPayload, 'userId' | 'email'>,
+    userToken: string,
+  ) {
+    const { userId, email } = user
     const s = createSaga()
     return s.run(async () => {
       const cart = await cartClient.checkout(userId)
@@ -67,7 +80,7 @@ export function createOrderService(deps: IDeps) {
       const result = await db.transaction(async (tx) => {
         const [order] = await tx
           .insert(orders)
-          .values({ userId, total })
+          .values({ userId, userEmail: email, total })
           .returning()
 
         const insertedItems = await tx
@@ -90,6 +103,7 @@ export function createOrderService(deps: IDeps) {
         await publishOrderPlaced({
           orderId: result.id,
           userId,
+          email,
           items: validatedItems,
           total,
         })
@@ -176,7 +190,7 @@ export function createOrderService(deps: IDeps) {
     }
 
     try {
-      await publishOrderStatusChanged({ orderId: id, status: newStatus })
+      await publishOrderStatusChanged(toStatusChanged(updated))
     } catch {
       // Fire-and-forget — don't fail the request
     }
@@ -193,7 +207,7 @@ export function createOrderService(deps: IDeps) {
 
     if (row) {
       try {
-        await publishOrderStatusChanged({ orderId, status: 'paid' })
+        await publishOrderStatusChanged(toStatusChanged(row))
       } catch {
         // Fire-and-forget — don't fail the consumer
       }
@@ -209,7 +223,7 @@ export function createOrderService(deps: IDeps) {
     if (!row) return
 
     try {
-      await publishOrderStatusChanged({ orderId, status: 'cancelled' })
+      await publishOrderStatusChanged(toStatusChanged(row))
     } catch {
       // Fire-and-forget — don't fail the consumer
     }

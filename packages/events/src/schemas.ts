@@ -19,9 +19,11 @@ export const UserRegisteredSchema = z.object({
 export const OrderPlacedSchema = z.object({
   orderId: z.string().uuid(),
   userId: z.string().uuid(),
+  email: z.string().email(),
   items: z.array(
     z.object({
       productId: z.string().uuid(),
+      name: z.string(),
       quantity: z.number().int(),
       price: z.number().int(),
     }),
@@ -44,6 +46,8 @@ export const PaymentFailedSchema = z.object({
 
 export const OrderStatusChangedSchema = z.object({
   orderId: z.string().uuid(),
+  userId: z.string().uuid(),
+  email: z.string().email(),
   status: z.enum(['pending', 'paid', 'shipped', 'delivered', 'cancelled']),
 })
 

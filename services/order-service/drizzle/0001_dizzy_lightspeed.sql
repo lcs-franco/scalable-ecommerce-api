@@ -1,0 +1,1 @@
+ALTER TABLE "orders" ADD COLUMN "user_email" varchar NOT NULL;

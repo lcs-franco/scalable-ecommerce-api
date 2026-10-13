@@ -18,6 +18,7 @@ export const orderStatusEnum = pgEnum('order_status', [
 export const orders = pgTable('orders', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id').notNull(),
+  userEmail: varchar('user_email').notNull(),
   status: orderStatusEnum('status').notNull().default('pending'),
   total: integer('total').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true })

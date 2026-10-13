@@ -23,7 +23,7 @@ export async function orderRoutes(fastify: FastifyInstance, deps: IDeps) {
 
   app.post('/orders', async (request, reply) => {
     const token = request.headers.authorization?.replace('Bearer ', '') ?? ''
-    const order = await orderService.placeOrder(request.user.userId, token)
+    const order = await orderService.placeOrder(request.user, token)
     return reply.status(201).send(order)
   })
 
