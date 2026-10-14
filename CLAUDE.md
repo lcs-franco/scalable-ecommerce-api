@@ -44,7 +44,7 @@ pnpm --filter @ecommerce/product-service seed
 
 ## Architecture
 
-**Monorepo** using pnpm workspaces with four shared packages and seven microservices (6 implemented, 1 placeholder).
+**Monorepo** using pnpm workspaces with four shared packages and seven microservices.
 
 ### Shared Packages (`packages/`)
 
@@ -65,11 +65,13 @@ Packages must be built (`pnpm build`) before services can import them.
 | product-service      | 3002 | PostgreSQL (product_db) | Implemented |
 | cart-service         | 3003 | Redis                   | Implemented |
 | order-service        | 3004 | PostgreSQL (order_db)   | Implemented |
-| api-gateway          | 3000 | —                       | Placeholder |
+| api-gateway          | 3000 | Redis (rate limits)     | Implemented |
 | payment-service      | 3005 | PostgreSQL (payment_db) | Implemented |
 | notification-service | 3006 | —                       | Implemented |
 
 ### Communication Patterns
+
+**Gateway:** Clients call `api-gateway` (`/api/...`). It proxies only the routes in its allowlist (`services/api-gateway/src/routes/table.ts`, everything else is 404), checks access (`public | user | admin`), rate limits via Redis, and forwards `Authorization` plus `X-User-Id`/`X-User-Role`/`X-Request-Id`. Services still verify the JWT themselves. A new client-facing route must be added to the allowlist.
 
 **Synchronous (HTTP):** Service-to-service calls use `x-internal-token` header (shared secret from `INTERNAL_SERVICE_TOKEN` env var), not JWT. Client factories live in each service (e.g., `createProductClient`, `createCartClient`).
 
