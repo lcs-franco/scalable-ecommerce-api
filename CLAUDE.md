@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Install dependencies (pnpm 11, Node 22)
 pnpm install
 
-# Start infrastructure (Postgres 16, Redis 7, Kafka KRaft)
+# Start infrastructure (Postgres 16, Redis 7, Kafka KRaft, Mailpit — sent emails at http://localhost:8025)
 docker compose up -d
 
 # Run all services in dev mode (tsx watch)
@@ -44,7 +44,7 @@ pnpm --filter @ecommerce/product-service seed
 
 ## Architecture
 
-**Monorepo** using pnpm workspaces with four shared packages and seven microservices (5 implemented, 2 placeholder).
+**Monorepo** using pnpm workspaces with four shared packages and seven microservices (6 implemented, 1 placeholder).
 
 ### Shared Packages (`packages/`)
 
@@ -67,7 +67,7 @@ Packages must be built (`pnpm build`) before services can import them.
 | order-service        | 3004 | PostgreSQL (order_db)   | Implemented |
 | api-gateway          | 3000 | —                       | Placeholder |
 | payment-service      | 3005 | PostgreSQL (payment_db) | Implemented |
-| notification-service | 3006 | —                       | Placeholder |
+| notification-service | 3006 | —                       | Implemented |
 
 ### Communication Patterns
 

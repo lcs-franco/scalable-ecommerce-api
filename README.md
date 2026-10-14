@@ -51,7 +51,7 @@ services/
   cart-service/         → Shopping cart (Redis-backed)
   order-service/        → Order placement and lifecycle
   payment-service/      → Stripe integration (test mode)
-  notification-service/ → Email (Ethereal) and event-driven alerts
+  notification-service/ → Email (Mailpit in dev) and event-driven alerts
 
 packages/
   auth/                 → JWT utilities and Fastify auth plugin

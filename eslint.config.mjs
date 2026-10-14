@@ -9,7 +9,7 @@ export default [
   ...tseslint.configs.recommended,
   prettierConfig,
   {
-    files: ['**/*.{js,mjs,cjs,ts,mts,cts}'],
+    files: ['**/*.{js,mjs,cjs,ts,mts,cts,tsx}'],
     languageOptions: { globals: globals.node },
     rules: {
       eqeqeq: ['error', 'always'],
