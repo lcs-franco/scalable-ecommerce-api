@@ -1,7 +1,8 @@
-import type { EventData, TopicName, Topics } from '@ecommerce/events'
+import { type EventData, type TopicName, Topics } from '@ecommerce/events'
 import type { Logger } from '@ecommerce/logger'
 import {
   type IEmailContent,
+  isNotifiedStatus,
   orderConfirmationEmail,
   orderStatusEmail,
   paymentConfirmedEmail,
@@ -15,8 +16,9 @@ interface IDeps {
   log: Logger
 }
 
-interface IDeliveryContext {
-  topic: TopicName
+// The fields every notified event carries: who to email and what to log.
+interface INotifiedEvent {
+  email: string
   userId: string
   orderId?: string
 }
@@ -27,59 +29,43 @@ export function createNotificationService(deps: IDeps) {
   const { email, log } = deps
 
   async function deliver(
-    to: string,
+    topic: TopicName,
+    event: INotifiedEvent,
     content: Promise<IEmailContent>,
-    context: IDeliveryContext,
   ): Promise<void> {
     try {
-      await email.send({ to, ...(await content) })
+      await email.send({ to: event.email, ...(await content) })
     } catch (err) {
-      log.error({ err, ...context }, 'Failed to send email')
+      log.error(
+        { err, topic, userId: event.userId, orderId: event.orderId },
+        'Failed to send email',
+      )
     }
   }
 
   return {
     onUserRegistered: (data: EventData<typeof Topics.USER_REGISTERED>) =>
-      deliver(data.email, welcomeEmail(data), {
-        topic: 'user.registered',
-        userId: data.userId,
-      }),
+      deliver(Topics.USER_REGISTERED, data, welcomeEmail(data)),
 
     onOrderPlaced: (data: EventData<typeof Topics.ORDER_PLACED>) =>
-      deliver(data.email, orderConfirmationEmail(data), {
-        topic: 'order.placed',
-        userId: data.userId,
-        orderId: data.orderId,
-      }),
+      deliver(Topics.ORDER_PLACED, data, orderConfirmationEmail(data)),
 
     onPaymentConfirmed: (data: EventData<typeof Topics.PAYMENT_CONFIRMED>) =>
-      deliver(data.email, paymentConfirmedEmail(data), {
-        topic: 'payment.confirmed',
-        userId: data.userId,
-        orderId: data.orderId,
-      }),
+      deliver(Topics.PAYMENT_CONFIRMED, data, paymentConfirmedEmail(data)),
 
     onPaymentFailed: (data: EventData<typeof Topics.PAYMENT_FAILED>) =>
-      deliver(data.email, paymentFailedEmail(data), {
-        topic: 'payment.failed',
-        userId: data.userId,
-        orderId: data.orderId,
-      }),
+      deliver(Topics.PAYMENT_FAILED, data, paymentFailedEmail(data)),
 
     // paid/cancelled are already covered by the payment emails.
     onOrderStatusChanged: async (
       data: EventData<typeof Topics.ORDER_STATUS_CHANGED>,
     ) => {
-      if (data.status !== 'shipped' && data.status !== 'delivered') return
+      if (!isNotifiedStatus(data.status)) return
 
       await deliver(
-        data.email,
+        Topics.ORDER_STATUS_CHANGED,
+        data,
         orderStatusEmail({ ...data, status: data.status }),
-        {
-          topic: 'order.status-changed',
-          userId: data.userId,
-          orderId: data.orderId,
-        },
       )
     },
   }

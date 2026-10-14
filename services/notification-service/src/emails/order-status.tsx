@@ -8,6 +8,10 @@ export const STATUS_MESSAGES: Record<NotifiedStatus, string> = {
   delivered: 'was delivered',
 }
 
+export function isNotifiedStatus(status: string): status is NotifiedStatus {
+  return Object.hasOwn(STATUS_MESSAGES, status)
+}
+
 interface IOrderStatusEmailProps {
   orderId: string
   status: NotifiedStatus

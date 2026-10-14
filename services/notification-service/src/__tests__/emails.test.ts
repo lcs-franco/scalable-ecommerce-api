@@ -58,6 +58,8 @@ describe('emails', () => {
   it('inlines Tailwind classes as styles', async () => {
     const { html } = await orderStatusEmail({
       orderId: ORDER_ID,
+      userId: USER_ID,
+      email: EMAIL,
       status: 'shipped',
     })
 
