@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Install dependencies (pnpm 11, Node 22)
 pnpm install
 
-# Start infrastructure (Postgres 16, Redis 7, Kafka KRaft)
+# Start infrastructure (Postgres 16, Redis 7, Kafka KRaft, Mailpit — sent emails at http://localhost:8025)
 docker compose up -d
 
 # Run all services in dev mode (tsx watch)

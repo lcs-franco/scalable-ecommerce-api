@@ -55,6 +55,17 @@ services:
       timeout: 5s
       retries: 5
 
+  mailpit:
+    image: axllent/mailpit:v1.31
+    ports:
+      - 1025:1025 # SMTP
+      - 8025:8025 # web UI
+    healthcheck:
+      test: ['CMD', '/mailpit', 'readyz']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   postgres-data:
   kafka-data:
