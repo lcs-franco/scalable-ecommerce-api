@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { welcomeEmail } from '../emails/index.js'
 import { createNotificationService } from '../services/notification.service.js'
 import {
   EMAIL,
@@ -9,6 +10,12 @@ import {
   PRODUCT_ID,
   USER_ID,
 } from './helpers.js'
+
+// Real templates by default; a test can make one reject to simulate a render failure.
+vi.mock('../emails/index.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../emails/index.js')>()
+  return { ...actual, welcomeEmail: vi.fn(actual.welcomeEmail) }
+})
 
 describe('NotificationService', () => {
   let email: ReturnType<typeof fakeEmailProvider>
@@ -124,6 +131,22 @@ describe('NotificationService', () => {
       topic: 'payment.failed',
       userId: USER_ID,
       orderId: ORDER_ID,
+    })
+  })
+
+  it('logs a failed render and does not send or rethrow', async () => {
+    const error = new Error('render failed')
+    vi.mocked(welcomeEmail).mockRejectedValueOnce(error)
+
+    await expect(
+      service.onUserRegistered({ userId: USER_ID, email: EMAIL, name: 'Ana' }),
+    ).resolves.toBeUndefined()
+
+    expect(email.sent).toHaveLength(0)
+    expect(log.error.mock.calls[0][0]).toMatchObject({
+      err: error,
+      topic: 'user.registered',
+      userId: USER_ID,
     })
   })
 })
