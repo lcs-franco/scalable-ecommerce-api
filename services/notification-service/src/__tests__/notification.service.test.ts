@@ -68,6 +68,7 @@ describe('NotificationService', () => {
 
     expect(email.sent).toHaveLength(1)
     expect(email.sent[0].subject).toContain('Payment received')
+    expect(email.sent[0].html).toContain('$25.00')
   })
 
   it('sends a payment failure email on payment.failed', async () => {
@@ -83,6 +84,8 @@ describe('NotificationService', () => {
     expect(email.sent[0].html).toContain('Your card was declined.')
   })
 
+  const STATUS_TEXT = { shipped: 'is on its way', delivered: 'was delivered' }
+
   it.each(['shipped', 'delivered'] as const)(
     'sends a status email when the order is %s',
     async (status) => {
@@ -94,6 +97,8 @@ describe('NotificationService', () => {
       })
 
       expect(email.sent).toHaveLength(1)
+      expect(email.sent[0].html).toContain(ORDER_ID)
+      expect(email.sent[0].html).toContain(STATUS_TEXT[status])
     },
   )
 

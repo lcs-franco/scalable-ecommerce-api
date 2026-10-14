@@ -8,6 +8,8 @@ import {
 import { formatCents } from '../emails/format.js'
 import { EMAIL, ORDER_ID, PAYMENT_ID, PRODUCT_ID, USER_ID } from './helpers.js'
 
+const OTHER_PRODUCT_ID = '00000000-0000-0000-0000-0000000000bb'
+
 describe('formatCents', () => {
   it('formats cents as USD', () => {
     expect(formatCents(123456)).toBe('$1,234.56')
@@ -34,13 +36,24 @@ describe('emails', () => {
       email: EMAIL,
       items: [
         { productId: PRODUCT_ID, name: 'Keyboard', quantity: 2, price: 4999 },
+        {
+          productId: OTHER_PRODUCT_ID,
+          name: 'Mouse',
+          quantity: 3,
+          price: 1500,
+        },
       ],
-      total: 9998,
+      total: 14498,
     })
 
     expect(subject).toBe(`Order ${ORDER_ID.slice(0, 8)} confirmed`)
     expect(html).toContain('Keyboard')
-    expect(html).toContain('$99.98')
+    expect(html).toContain('Mouse')
+    expect(html).toMatch(/>\s*Qty\s*</)
+    expect(html).toMatch(/>\s*3\s*</)
+    expect(html).toContain('$99.98') // 2 × $49.99
+    expect(html).toContain('$45.00') // 3 × $15.00
+    expect(html).toContain('$144.98')
   })
 
   it('payment failure includes the reason', async () => {
