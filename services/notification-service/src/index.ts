@@ -5,13 +5,15 @@ import { Kafka } from 'kafkajs'
 import { buildApp } from './app.js'
 import { config } from './config/env.js'
 import { setupConsumers } from './kafka/consumers.js'
-import { createEtherealEmailProvider } from './providers/ethereal-email.provider.js'
+import { createSmtpEmailProvider } from './providers/smtp-email.provider.js'
 import { createNotificationService } from './services/notification.service.js'
 
 async function main() {
   const log = createLogger({ service: 'notification-service' })
 
-  const email = await createEtherealEmailProvider({
+  const email = await createSmtpEmailProvider({
+    host: config.SMTP_HOST,
+    port: config.SMTP_PORT,
     from: config.EMAIL_FROM,
     log,
   })
