@@ -58,3 +58,37 @@ packages/
   events/               → Kafka event schemas (Zod) and helpers
   logger/               → Pino logger with request-id correlation
 ```
+
+## Quickstart
+
+### Prerequisites
+
+- Docker with Compose v2
+- A [Stripe test mode](https://dashboard.stripe.com/test/apikeys) secret key (`sk_test_...`): payments are processed against Stripe
+- For host development only: Node.js 22 and pnpm 11
+
+### Run the whole platform
+
+```bash
+cp .env.example .env   # then set STRIPE_SECRET_KEY
+docker compose up --build
+```
+
+This starts Postgres, Redis, Kafka, Mailpit and the seven services, creates the Kafka topics, and seeds an admin user (`admin@example.com` / `ADMIN_PASSWORD`) and sample products. The platform is ready when `api-gateway` is healthy.
+
+| URL                          | What                                   |
+| ---------------------------- | -------------------------------------- |
+| http://localhost:3000/api    | API Gateway (the only public API port) |
+| http://localhost:3000/health | Gateway liveness                       |
+| http://localhost:8025        | Mailpit: emails sent by the platform   |
+
+Shopper journey through the gateway: `POST /api/auth/register` → `POST /api/auth/login` → `GET /api/products` → `POST /api/cart/items` → `POST /api/orders` → the order becomes `paid` once Stripe confirms → `GET /api/payments/order/:orderId`, with welcome, order and payment emails in Mailpit.
+
+### Develop
+
+Two options:
+
+- **Containers with hot reload:** `pnpm dev:docker` (stop with `pnpm dev:docker:down`). Each service runs `tsx watch` with its `src/` mounted, and ports 3001–3006 are exposed for debugging. Changes to `packages/*` or dependencies need a rebuild (`pnpm dev:docker` builds on start).
+- **On the host:** `pnpm install && pnpm build`, copy each `services/*/.env.example` to `.env`, start only the infrastructure (`docker compose up -d postgres redis kafka kafka-init mailpit`), then `pnpm dev`.
+
+Tests run on the host against the infrastructure containers: `pnpm test`.

@@ -8,10 +8,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Install dependencies (pnpm 11, Node 22)
 pnpm install
 
-# Start infrastructure (Postgres 16, Redis 7, Kafka KRaft, Mailpit — sent emails at http://localhost:8025)
-docker compose up -d
+# Whole platform in containers (root .env from .env.example; gateway :3000, Mailpit :8025)
+docker compose up --build
 
-# Run all services in dev mode (tsx watch)
+# Same, with hot reload of services/*/src (packages/* changes need a rebuild)
+pnpm dev:docker
+
+# Infrastructure only, for host development (Postgres 16, Redis 7, Kafka KRaft + topics, Mailpit)
+docker compose up -d postgres redis kafka kafka-init mailpit
+
+# Run all services on the host in dev mode (tsx watch)
 pnpm dev
 
 # Run a single service
@@ -83,6 +89,11 @@ Packages must be built (`pnpm build`) before services can import them.
 - **Saga pattern:** Order placement uses compensating transactions — `saga()` registers rollback functions and executes them in LIFO order on failure.
 - **Domain errors:** Services define `ApplicationError` subclasses with `statusCode` and `code`. The error handler maps `ZodError → 400`, `ApplicationError → custom status`, unknown → 500.
 - **Config validation:** Each service validates env vars at startup with Zod. Missing/invalid → process exits immediately.
+- **Health:** every service exposes `GET /health` (liveness, `skipAuth`, hidden from docs). Startup is fail-fast (migrations and Kafka connect run before `listen`), so compose uses it as the readiness signal.
+
+### Containers
+
+One root `Dockerfile` builds every service (`--build-arg SERVICE=<dir>`): `tsc` → `dist/`, then `pnpm deploy --prod --legacy` into a self-contained folder run with `node dist/index.js`. Target `dev` runs `tsx watch` for `docker-compose.dev.yml`. Each service's `package.json` `files` (`dist`, plus `drizzle` where present) decides what the deploy copies, as do the `files` of `packages/*`. In `docker-compose.yml`, services get env through `environment:` with internal hostnames; secrets come from the root `.env`. `kafka-init` creates the topics (keep its list in sync with `Topics`); `user-seed` / `product-seed` run once after their service is healthy. A new service needs an entry in compose (and in the dev override).
 
 ### Database
 
