@@ -65,7 +65,7 @@ packages/
 
 - Docker with Compose v2
 - A [Stripe test mode](https://dashboard.stripe.com/test/apikeys) secret key (`sk_test_...`): payments are processed against Stripe
-- For host development only: Node.js 22 and pnpm 11
+- Node.js 22 and pnpm 11 (for `pnpm dev:docker`, tests and lint)
 
 ### Run the whole platform
 
@@ -86,9 +86,6 @@ Shopper journey through the gateway: `POST /api/auth/register` → `POST /api/au
 
 ### Develop
 
-Two options:
+`pnpm dev:docker` (stop with `pnpm dev:docker:down`) runs the platform with hot reload: each service runs `tsx watch` with its `src/` mounted, and ports 3001–3006 are exposed for debugging. Changes to `packages/*` or dependencies need a rebuild (`pnpm dev:docker` builds on start).
 
-- **Containers with hot reload:** `pnpm dev:docker` (stop with `pnpm dev:docker:down`). Each service runs `tsx watch` with its `src/` mounted, and ports 3001–3006 are exposed for debugging. Changes to `packages/*` or dependencies need a rebuild (`pnpm dev:docker` builds on start).
-- **On the host:** `pnpm install && pnpm build`, copy each `services/*/.env.example` to `.env`, start only the infrastructure (`docker compose up -d postgres redis kafka kafka-init mailpit`), then `pnpm dev`.
-
-Tests run on the host against the infrastructure containers: `pnpm test`.
+Tests run on the host against the infrastructure containers: `pnpm install && pnpm build`, then `pnpm test`.

@@ -5,7 +5,6 @@
   "private": true,
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "seed": "tsx src/db/seed.ts",
     "db:generate": "drizzle-kit generate",
     "build": "tsc",
     "test": "vitest run"

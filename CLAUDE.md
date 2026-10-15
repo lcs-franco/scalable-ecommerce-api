@@ -11,19 +11,13 @@ pnpm install
 # Whole platform in containers (root .env from .env.example; gateway :3000, Mailpit :8025)
 docker compose up --build
 
-# Same, with hot reload of services/*/src (packages/* changes need a rebuild)
+# Daily development: same, with hot reload of services/*/src (packages/* changes need a rebuild)
 pnpm dev:docker
 
-# Infrastructure only, for host development (Postgres 16, Redis 7, Kafka KRaft + topics, Mailpit)
+# Infrastructure only, enough for the tests (Postgres 16, Redis 7, Kafka KRaft + topics, Mailpit)
 docker compose up -d postgres redis kafka kafka-init mailpit
 
-# Run all services on the host in dev mode (tsx watch)
-pnpm dev
-
-# Run a single service
-pnpm --filter @ecommerce/user-service dev
-
-# Build shared packages (must build before running services)
+# Build shared packages (tests on the host import their dist)
 pnpm build
 
 # Type check entire monorepo
@@ -44,8 +38,8 @@ cd services/user-service && npx vitest run src/__tests__/auth.test.ts
 # Generate Drizzle migrations (per service)
 pnpm --filter @ecommerce/product-service db:generate
 
-# Seed database (per service)
-pnpm --filter @ecommerce/product-service seed
+# Re-run a seed (seeds also run on every compose up)
+docker compose run --rm product-seed
 ```
 
 ## Architecture
@@ -108,7 +102,7 @@ Single Postgres container hosts 4 logical databases (`init-databases.sh` creates
 
 ## Environment Setup
 
-Copy `.env.example` to `.env` and adjust values. Key variables: `DATABASE_URL`, `JWT_SECRET` (min 32 chars), `KAFKA_BROKER`, `REDIS_URL`, `INTERNAL_SERVICE_TOKEN`.
+Copy the root `.env.example` to `.env` and set `STRIPE_SECRET_KEY`. It is the only env file: compose reads it and passes each service its variables through `environment:` (internal hostnames are fixed in `docker-compose.yml`). Services do not run on the host; tests use defaults from their `__tests__/helpers.ts`.
 
 ## Issue Tracking
 
