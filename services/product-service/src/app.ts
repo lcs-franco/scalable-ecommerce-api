@@ -64,6 +64,12 @@ export async function buildApp(opts: IBuildAppOptions) {
   await app.register(docsPlugin, { title: 'product-service' })
   await app.register(authPlugin, { publicPrefixes: [DOCS_PREFIX] })
 
+  app.get(
+    '/health',
+    { config: { skipAuth: true }, schema: { hide: true } },
+    async () => ({ status: 'ok' }),
+  )
+
   const categoryService = createCategoryService(opts.db)
   const productService = createProductService(opts.db)
 

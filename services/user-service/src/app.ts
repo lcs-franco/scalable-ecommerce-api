@@ -68,6 +68,12 @@ export async function buildApp(opts: IBuildAppOptions) {
   await app.register(docsPlugin, { title: 'user-service' })
   await app.register(authPlugin, { publicPrefixes: [DOCS_PREFIX] })
 
+  app.get(
+    '/health',
+    { config: { skipAuth: true }, schema: { hide: true } },
+    async () => ({ status: 'ok' }),
+  )
+
   const userService = createUserService(opts.db)
   const authService = createAuthService(opts.db, app, userService)
 
