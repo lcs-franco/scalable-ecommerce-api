@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "db:generate": "drizzle-kit generate",
+    "build": "tsc",
     "test": "vitest run"
   },
   "dependencies": {
@@ -29,5 +30,9 @@
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
-  }
+  },
+  "files": [
+    "dist",
+    "drizzle"
+  ]
 }
