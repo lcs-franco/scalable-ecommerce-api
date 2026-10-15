@@ -1,8 +1,25 @@
+x-service: &service
+  restart: on-failure
+  healthcheck:
+    test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:$$PORT/health || exit 1']
+    interval: 5s
+    timeout: 3s
+    retries: 10
+    start_period: 10s
+
+x-seed: &seed
+  command: ['node', 'dist/db/seed.js']
+  restart: 'no'
+
+x-secrets:
+  jwt: &jwt-secret ${JWT_SECRET:?set JWT_SECRET in .env}
+  internal: &internal-token ${INTERNAL_SERVICE_TOKEN:?set INTERNAL_SERVICE_TOKEN in .env}
+
 services:
   postgres:
     image: postgres:16-alpine
     ports:
-      - 5432:5432
+      - ${POSTGRES_PORT:-5432}:5432
     environment:
       - POSTGRES_USER
       - POSTGRES_PASSWORD
@@ -19,7 +36,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - 6380:6379
+      - ${REDIS_PORT:-6380}:6379
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
@@ -29,7 +46,7 @@ services:
   kafka:
     image: confluentinc/cp-kafka:7.6.0
     ports:
-      - 9092:9092
+      - ${KAFKA_PORT:-9092}:9092
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -55,6 +72,20 @@ services:
       timeout: 5s
       retries: 5
 
+  # Topic list mirrors `Topics` in packages/events/src/schemas.ts
+  kafka-init:
+    image: confluentinc/cp-kafka:7.6.0
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ['sh', '-c']
+    command:
+      - |
+        for topic in user.registered order.placed order.status-changed payment.confirmed payment.failed; do
+          kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists \
+            --topic "$$topic" --partitions 1 --replication-factor 1 || exit 1
+        done
+
   mailpit:
     image: axllent/mailpit:v1.31
     ports:
@@ -65,6 +96,137 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  api-gateway:
+    <<: *service
+    build: { context: ., args: { SERVICE: api-gateway } }
+    image: ecommerce/api-gateway
+    ports:
+      - 3000:3000
+    environment:
+      PORT: 3000
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: *jwt-secret
+      USER_SERVICE_URL: http://user-service:3001
+      PRODUCT_SERVICE_URL: http://product-service:3002
+      CART_SERVICE_URL: http://cart-service:3003
+      ORDER_SERVICE_URL: http://order-service:3004
+      PAYMENT_SERVICE_URL: http://payment-service:3005
+      RATE_LIMIT_ANONYMOUS: ${RATE_LIMIT_ANONYMOUS:-30}
+      RATE_LIMIT_AUTHENTICATED: ${RATE_LIMIT_AUTHENTICATED:-100}
+      UPSTREAM_TIMEOUT_MS: ${UPSTREAM_TIMEOUT_MS:-10000}
+      TRUST_PROXY: ${TRUST_PROXY:-false}
+    depends_on:
+      redis: { condition: service_healthy }
+      user-service: { condition: service_healthy }
+      product-service: { condition: service_healthy }
+      cart-service: { condition: service_healthy }
+      order-service: { condition: service_healthy }
+      payment-service: { condition: service_healthy }
+      notification-service: { condition: service_healthy }
+      user-seed: { condition: service_completed_successfully }
+      product-seed: { condition: service_completed_successfully }
+
+  user-service:
+    <<: *service
+    build: &user-build { context: ., args: { SERVICE: user-service } }
+    image: ecommerce/user-service
+    environment: &user-env
+      PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/user_db
+      KAFKA_BROKER: kafka:29092
+      JWT_SECRET: *jwt-secret
+    depends_on:
+      postgres: { condition: service_healthy }
+      kafka-init: { condition: service_completed_successfully }
+
+  user-seed:
+    <<: *seed
+    build: *user-build
+    image: ecommerce/user-service
+    environment:
+      <<: *user-env
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
+    depends_on:
+      user-service: { condition: service_healthy }
+
+  product-service:
+    <<: *service
+    build: &product-build { context: ., args: { SERVICE: product-service } }
+    image: ecommerce/product-service
+    environment: &product-env
+      PORT: 3002
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/product_db
+      JWT_SECRET: *jwt-secret
+      INTERNAL_SERVICE_TOKEN: *internal-token
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  product-seed:
+    <<: *seed
+    build: *product-build
+    image: ecommerce/product-service
+    environment: *product-env
+    depends_on:
+      product-service: { condition: service_healthy }
+
+  cart-service:
+    <<: *service
+    build: { context: ., args: { SERVICE: cart-service } }
+    image: ecommerce/cart-service
+    environment:
+      PORT: 3003
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: *jwt-secret
+      PRODUCT_SERVICE_URL: http://product-service:3002
+      INTERNAL_SERVICE_TOKEN: *internal-token
+    depends_on:
+      redis: { condition: service_healthy }
+
+  order-service:
+    <<: *service
+    build: { context: ., args: { SERVICE: order-service } }
+    image: ecommerce/order-service
+    environment:
+      PORT: 3004
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/order_db
+      JWT_SECRET: *jwt-secret
+      KAFKA_BROKER: kafka:29092
+      CART_SERVICE_URL: http://cart-service:3003
+      PRODUCT_SERVICE_URL: http://product-service:3002
+      INTERNAL_SERVICE_TOKEN: *internal-token
+    depends_on:
+      postgres: { condition: service_healthy }
+      kafka-init: { condition: service_completed_successfully }
+
+  payment-service:
+    <<: *service
+    build: { context: ., args: { SERVICE: payment-service } }
+    image: ecommerce/payment-service
+    environment:
+      PORT: 3005
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/payment_db
+      JWT_SECRET: *jwt-secret
+      KAFKA_BROKER: kafka:29092
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:?set STRIPE_SECRET_KEY (sk_test_...) in .env}
+      STRIPE_TEST_PAYMENT_METHOD: ${STRIPE_TEST_PAYMENT_METHOD:-pm_card_visa}
+    depends_on:
+      postgres: { condition: service_healthy }
+      kafka-init: { condition: service_completed_successfully }
+
+  notification-service:
+    <<: *service
+    build: { context: ., args: { SERVICE: notification-service } }
+    image: ecommerce/notification-service
+    environment:
+      PORT: 3006
+      KAFKA_BROKER: kafka:29092
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      EMAIL_FROM: ${EMAIL_FROM:-"E-commerce" <no-reply@ecommerce.local>}
+    depends_on:
+      mailpit: { condition: service_healthy }
+      kafka-init: { condition: service_completed_successfully }
 
 volumes:
   postgres-data:
