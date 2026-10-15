@@ -1,6 +1,3 @@
-# One image per service: docker build --build-arg SERVICE=<dir under services/> .
-# Build context is the repo root (lockfile + workspace packages).
-
 FROM node:22-alpine AS base
 ENV HUSKY=0
 RUN corepack enable
@@ -18,14 +15,14 @@ COPY . .
 RUN pnpm install --offline --frozen-lockfile
 RUN pnpm --filter "@ecommerce/${SERVICE}..." run build
 
-# Hot reload target for docker-compose.dev.yml (src is bind-mounted)
 FROM build AS dev
 ARG SERVICE
 ENV NODE_ENV=development
 WORKDIR /repo/services/${SERVICE}
 CMD ["pnpm", "run", "dev"]
 
-# Self-contained folder: service dist + prod deps, workspace packages copied in
+# --legacy: the default deploy requires injectWorkspacePackages, which would
+# change how workspace packages are linked for local development
 FROM build AS deploy
 ARG SERVICE
 RUN pnpm --filter "@ecommerce/${SERVICE}" deploy --prod --legacy /out

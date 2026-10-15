@@ -1,6 +1,5 @@
-# Hot reload: docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
-# Only services/<name>/src is mounted: changes to packages/*, dependencies or seed
-# scripts (seeds run the dist built into the image) need --build.
+# Only services/<name>/src is mounted: changes to packages/*, dependencies or
+# seed scripts (seeds run the dist built into the image) need --build.
 
 x-dev: &dev
   build: { target: dev }
