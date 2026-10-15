@@ -1,0 +1,61 @@
+# Hot reload: docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+# Only services/<name>/src is mounted: changes to packages/*, dependencies or seed
+# scripts (seeds run the dist built into the image) need --build.
+
+x-dev: &dev
+  build: { target: dev }
+
+services:
+  api-gateway:
+    <<: *dev
+    image: ecommerce/api-gateway:dev
+    volumes: ['./services/api-gateway/src:/repo/services/api-gateway/src']
+
+  user-service:
+    <<: *dev
+    image: ecommerce/user-service:dev
+    ports: ['3001:3001']
+    volumes: ['./services/user-service/src:/repo/services/user-service/src']
+
+  user-seed:
+    <<: *dev
+    image: ecommerce/user-service:dev
+
+  product-service:
+    <<: *dev
+    image: ecommerce/product-service:dev
+    ports: ['3002:3002']
+    volumes:
+      ['./services/product-service/src:/repo/services/product-service/src']
+
+  product-seed:
+    <<: *dev
+    image: ecommerce/product-service:dev
+
+  cart-service:
+    <<: *dev
+    image: ecommerce/cart-service:dev
+    ports: ['3003:3003']
+    volumes: ['./services/cart-service/src:/repo/services/cart-service/src']
+
+  order-service:
+    <<: *dev
+    image: ecommerce/order-service:dev
+    ports: ['3004:3004']
+    volumes: ['./services/order-service/src:/repo/services/order-service/src']
+
+  payment-service:
+    <<: *dev
+    image: ecommerce/payment-service:dev
+    ports: ['3005:3005']
+    volumes:
+      ['./services/payment-service/src:/repo/services/payment-service/src']
+
+  notification-service:
+    <<: *dev
+    image: ecommerce/notification-service:dev
+    ports: ['3006:3006']
+    volumes:
+      [
+        './services/notification-service/src:/repo/services/notification-service/src',
+      ]
