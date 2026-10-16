@@ -271,7 +271,7 @@ describe('POST /cart/checkout', () => {
     })
 
     expect(res.statusCode).toBe(401)
-    expect(res.json().error).toBe('Invalid or missing service token')
+    expect(res.json().error).toBe('Invalid or missing internal service token')
   })
 
   it('rejects requests with wrong service token', async () => {
