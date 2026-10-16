@@ -93,7 +93,7 @@ export async function productRoutes(fastify: FastifyInstance, deps: IDeps) {
     },
   )
 
-  // Internal endpoints — called service-to-service by order-service.
+  // Called by order-service.
   app.post(
     '/products/restore-stock',
     {

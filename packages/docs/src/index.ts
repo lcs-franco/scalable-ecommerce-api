@@ -19,8 +19,7 @@ export const docsPlugin = fp<IDocsOptions>(
   async function docs(app: FastifyInstance, opts) {
     const { title, description, version = '1.0.0' } = opts
 
-    // Mirror the auth route config in the spec: internal (service-to-service)
-    // routes are hidden, public ones are not shown as protected by bearerAuth.
+    // Untyped on purpose: docs must not depend on @ecommerce/auth.
     app.addHook('onRoute', (routeOptions) => {
       const config = routeOptions.config as
         { skipAuth?: boolean; internal?: boolean } | undefined

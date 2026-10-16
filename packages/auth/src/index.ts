@@ -28,7 +28,6 @@ declare module 'fastify' {
   // eslint-disable-next-line @typescript-eslint/naming-convention
   interface FastifyContextConfig {
     skipAuth?: boolean
-    // Service-to-service route: authenticated by `x-internal-token`, not JWT.
     internal?: boolean
   }
 }
