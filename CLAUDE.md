@@ -48,12 +48,12 @@ docker compose run --rm product-seed
 
 ### Shared Packages (`packages/`)
 
-| Package             | Purpose                                                                                                                               |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `@ecommerce/auth`   | Fastify plugin wrapping `@fastify/jwt`. Routes opt out via `{ config: { skipAuth: true } }`; path prefixes via `publicPrefixes`       |
-| `@ecommerce/docs`   | `docsPlugin`: OpenAPI (Swagger + Scalar) at `DOCS_PREFIX` (`/docs`) from Zod route schemas; `schema: { hide: true }` hides a route    |
-| `@ecommerce/events` | Kafka topic constants, Zod event schemas, `createProducer`/`createConsumer` factories; test helpers under `@ecommerce/events/testing` |
-| `@ecommerce/logger` | Pino logger factory with per-service configuration                                                                                    |
+| Package             | Purpose                                                                                                                                                                                                                                                                     |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@ecommerce/auth`   | Fastify plugin wrapping `@fastify/jwt`. Routes opt out via `{ config: { skipAuth: true } }`; path prefixes via `publicPrefixes`. `{ config: { internal: true } }` routes require `x-internal-token` (plugin option `internalToken`) instead of JWT and are hidden from docs |
+| `@ecommerce/docs`   | `docsPlugin`: OpenAPI (Swagger + Scalar) at `DOCS_PREFIX` (`/docs`) from Zod route schemas; `schema: { hide: true }` hides a route                                                                                                                                          |
+| `@ecommerce/events` | Kafka topic constants, Zod event schemas, `createProducer`/`createConsumer` factories; test helpers under `@ecommerce/events/testing`                                                                                                                                       |
+| `@ecommerce/logger` | Pino logger factory with per-service configuration                                                                                                                                                                                                                          |
 
 Packages must be built (`pnpm build`) before services can import them.
 
@@ -73,7 +73,7 @@ Packages must be built (`pnpm build`) before services can import them.
 
 **Gateway:** Clients call `api-gateway` (`/api/...`). It proxies only the routes in its allowlist (`services/api-gateway/src/routes/table.ts`, everything else is 404), checks access (`public | user | admin`), rate limits via Redis, and forwards `Authorization` plus `X-User-Id`/`X-User-Role`/`X-Request-Id`. Services still verify the JWT themselves. A new client-facing route must be added to the allowlist.
 
-**Synchronous (HTTP):** Service-to-service calls use `x-internal-token` header (shared secret from `INTERNAL_SERVICE_TOKEN` env var), not JWT. Client factories live in each service (e.g., `createProductClient`, `createCartClient`).
+**Synchronous (HTTP):** Service-to-service calls use `x-internal-token` header (shared secret from `INTERNAL_SERVICE_TOKEN` env var), not JWT. The receiving route declares `config: { internal: true }` and `authPlugin` checks the token. Client factories live in each service (e.g., `createProductClient`, `createCartClient`).
 
 **Asynchronous (Kafka):** Events use Zod-validated schemas from `@ecommerce/events`. Topics: `user.registered`, `order.placed`, `order.status-changed`, `payment.confirmed`, `payment.failed`. Poison messages (bad JSON/schema) are logged and skipped, not retried.
 
