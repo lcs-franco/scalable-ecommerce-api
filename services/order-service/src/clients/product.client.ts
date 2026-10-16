@@ -52,8 +52,6 @@ export function createProductClient(opts: IProductClientOptions) {
     }
   }
 
-  // Unlike restoreStock, throws so the caller (Kafka consumer, admin request)
-  // fails and retries. Safe to repeat: product-service restores once per order.
   async function restoreOrderStock(
     orderId: string,
     items: IOrderItem[],

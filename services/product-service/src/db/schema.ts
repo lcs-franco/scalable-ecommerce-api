@@ -37,8 +37,6 @@ export const products = pgTable('products', {
     .$onUpdate(() => new Date()),
 })
 
-// One row per order whose stock was given back; makes the restore idempotent.
-// No FK: orders live in order_db.
 export const stockRestorations = pgTable('stock_restorations', {
   orderId: uuid('order_id').primaryKey(),
   createdAt: timestamp('created_at', { withTimezone: true })

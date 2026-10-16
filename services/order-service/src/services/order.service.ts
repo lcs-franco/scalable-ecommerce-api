@@ -215,19 +215,16 @@ export function createOrderService(deps: IDeps) {
   }
 
   async function markAsCancelled(orderId: string) {
-    // Missing or no longer pending (e.g. a redelivery after the cancel): the
-    // stock was already restored, or must not be.
     const row = await cancel(orderId, 'pending')
     if (!row) return
 
     try {
       await publishOrderStatusChanged(toStatusChanged(row))
     } catch {
-      // Fire-and-forget — a redelivery would skip the cancelled order anyway
+      // Fire-and-forget — don't fail the consumer
     }
   }
 
-  // Guarded on the status the caller read, so a concurrent change wins.
   async function transition(order: Order, status: OrderStatus) {
     const [row] = await db
       .update(orders)
@@ -237,18 +234,14 @@ export function createOrderService(deps: IDeps) {
     return row
   }
 
-  // Cancels the order if it is still `from`, restoring its stock first.
-  // The row lock is held across the restore call, so a concurrent transition
-  // (e.g. markAsPaid) waits and then finds the order cancelled, instead of
-  // landing between the restore and the update. A failure rolls back and
-  // leaves the order as it was; the retry repeats a restore that
-  // product-service applies only once per order.
   async function cancel(orderId: string, from: OrderStatus) {
     return db.transaction(async (tx) => {
       const [order] = await tx
         .select()
         .from(orders)
         .where(and(eq(orders.id, orderId), eq(orders.status, from)))
+        // Held across the restore call so a concurrent markAsPaid cannot land
+        // between the restore and the update.
         .for('update')
       if (!order) return undefined
 

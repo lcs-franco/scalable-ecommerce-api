@@ -175,8 +175,7 @@ export function createProductService(db: Db) {
         .returning()
       if (claimed.length === 0) return
 
-      // A product deleted since the order has nothing to restore; skipping it
-      // keeps a redelivered event from failing forever.
+      // Deleted products are skipped: a 404 would fail every redelivery.
       for (const item of items) {
         await tx
           .update(products)

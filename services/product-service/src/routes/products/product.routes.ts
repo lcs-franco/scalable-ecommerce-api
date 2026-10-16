@@ -116,7 +116,6 @@ export async function productRoutes(fastify: FastifyInstance, deps: IDeps) {
     },
   )
 
-  // Internal — idempotent per order (payment failed, admin cancel).
   app.post(
     '/products/orders/:orderId/restore-stock',
     {
