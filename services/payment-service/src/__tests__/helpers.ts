@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm'
 import { buildApp } from '../app.js'
 import { createDb } from '../db/index.js'
+import type { IPaymentPublishers } from '../services/payment.service.js'
 import type {
   IPaymentProcessor,
   PaymentResult,
@@ -51,7 +52,9 @@ export function mockPublishers() {
   }
 }
 
-export async function createTestApp() {
+export async function createTestApp(overrides?: {
+  publishers?: IPaymentPublishers
+}) {
   const { db, pool } = createDb(TEST_DATABASE_URL)
   const publishers = mockPublishers()
   const fake = fakeProcessor()
@@ -59,7 +62,7 @@ export async function createTestApp() {
   const app = await buildApp({
     db,
     processor: fake.processor,
-    publishers,
+    publishers: overrides?.publishers ?? publishers,
   })
   await app.ready()
 
