@@ -6,6 +6,7 @@ import type { createProductService } from '../../services/product.service.js'
 import {
   CreateProductBodySchema,
   ListProductsQuerySchema,
+  OrderParamsSchema,
   ProductParamsSchema,
   RestoreStockBodySchema,
   UpdateProductBodySchema,
@@ -111,6 +112,30 @@ export async function productRoutes(fastify: FastifyInstance, deps: IDeps) {
         internalServiceToken,
       )
       await productService.restoreStock(request.body.items)
+      return reply.send({ message: 'Stock restored' })
+    },
+  )
+
+  // Internal — idempotent per order (payment failed, admin cancel).
+  app.post(
+    '/products/orders/:orderId/restore-stock',
+    {
+      config: { skipAuth: true },
+      schema: {
+        params: OrderParamsSchema,
+        body: RestoreStockBodySchema,
+        hide: true,
+      },
+    },
+    async (request, reply) => {
+      requireInternalToken(
+        request.headers['x-internal-token'] as string,
+        internalServiceToken,
+      )
+      await productService.restoreOrderStock(
+        request.params.orderId,
+        request.body.items,
+      )
       return reply.send({ message: 'Stock restored' })
     },
   )

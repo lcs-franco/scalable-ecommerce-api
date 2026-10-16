@@ -1,6 +1,6 @@
 import { and, eq, gte, ilike, or, sql } from 'drizzle-orm'
 import type { Db } from '../db/index.js'
-import { categories, products } from '../db/schema.js'
+import { categories, products, stockRestorations } from '../db/schema.js'
 import { InsufficientStock, ProductNotFound } from '../errors/index.js'
 
 interface IListOptions {
@@ -166,5 +166,34 @@ export function createProductService(db: Db) {
     })
   }
 
-  return { list, findById, create, update, remove, validateOrder, restoreStock }
+  async function restoreOrderStock(orderId: string, items: IOrderItem[]) {
+    await db.transaction(async (tx) => {
+      const claimed = await tx
+        .insert(stockRestorations)
+        .values({ orderId })
+        .onConflictDoNothing()
+        .returning()
+      if (claimed.length === 0) return
+
+      // A product deleted since the order has nothing to restore; skipping it
+      // keeps a redelivered event from failing forever.
+      for (const item of items) {
+        await tx
+          .update(products)
+          .set({ stock: sql`stock + ${item.quantity}` })
+          .where(eq(products.id, item.productId))
+      }
+    })
+  }
+
+  return {
+    list,
+    findById,
+    create,
+    update,
+    remove,
+    validateOrder,
+    restoreStock,
+    restoreOrderStock,
+  }
 }
