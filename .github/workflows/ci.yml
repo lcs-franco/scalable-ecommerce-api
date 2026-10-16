@@ -88,9 +88,21 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      # Boots while dependencies install. Compose requires a .env.
+      - name: Start Kafka
+        run: |
+          cp .env.example .env
+          docker compose up -d kafka
+
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm run build
+
+      # kafka-init has no healthcheck, so `up --wait` would not wait for the topics.
+      - name: Create Kafka topics
+        run: |
+          docker compose up -d --wait kafka
+          docker compose run --rm kafka-init
 
       - name: Create test databases
         run: |
@@ -103,3 +115,4 @@ jobs:
       - run: pnpm test
         env:
           REDIS_URL: redis://localhost:6379
+          KAFKA_BROKER: localhost:9092

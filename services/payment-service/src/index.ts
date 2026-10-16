@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import { createConsumer, createProducer, Topics } from '@ecommerce/events'
+import { createConsumer, createProducer } from '@ecommerce/events'
 import { createLogger } from '@ecommerce/logger'
 import { Kafka } from 'kafkajs'
 import Stripe from 'stripe'
@@ -7,6 +7,7 @@ import { buildApp } from './app.js'
 import { config } from './config/env.js'
 import { createDb } from './db/index.js'
 import { setupConsumers } from './kafka/consumers.js'
+import { createPublishers } from './kafka/publishers.js'
 import { createStripeProcessor } from './payments/stripe.processor.js'
 
 async function main() {
@@ -34,12 +35,7 @@ async function main() {
   const app = await buildApp({
     db,
     processor,
-    publishers: {
-      publishPaymentConfirmed: (data) =>
-        producer.publish(Topics.PAYMENT_CONFIRMED, data),
-      publishPaymentFailed: (data) =>
-        producer.publish(Topics.PAYMENT_FAILED, data),
-    },
+    publishers: createPublishers(producer),
   })
 
   await setupConsumers({

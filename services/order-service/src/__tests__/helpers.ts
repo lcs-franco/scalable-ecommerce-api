@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm'
 import { buildApp } from '../app.js'
 import { saga } from '../config/saga.js'
 import { createDb } from '../db/index.js'
+import type { createPublishers } from '../kafka/publishers.js'
 
 process.env.JWT_SECRET ??= 'test-secret-must-be-at-least-32-chars!'
 
@@ -65,16 +66,18 @@ export function mockPublishers() {
 export async function createTestApp(overrides?: {
   cartClient?: ReturnType<typeof mockCartClient>
   productClient?: ReturnType<typeof mockProductClient>
+  publishers?: ReturnType<typeof createPublishers>
 }) {
   const { db, pool } = createDb(TEST_DATABASE_URL)
   const publishers = mockPublishers()
+  const publish = overrides?.publishers ?? publishers
 
   const { app, orderService } = await buildApp({
     db,
     cartClient: overrides?.cartClient ?? mockCartClient(),
     productClient: overrides?.productClient ?? mockProductClient(),
-    publishOrderPlaced: publishers.publishOrderPlaced,
-    publishOrderStatusChanged: publishers.publishOrderStatusChanged,
+    publishOrderPlaced: publish.publishOrderPlaced,
+    publishOrderStatusChanged: publish.publishOrderStatusChanged,
     createSaga: saga,
   })
   await app.ready()

@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import { createConsumer, createProducer, Topics } from '@ecommerce/events'
+import { createConsumer, createProducer } from '@ecommerce/events'
 import { Kafka } from 'kafkajs'
 import { buildApp } from './app.js'
 import { createCartClient } from './clients/cart.client.js'
@@ -8,6 +8,7 @@ import { config } from './config/env.js'
 import { saga } from './config/saga.js'
 import { createDb } from './db/index.js'
 import { setupConsumers } from './kafka/consumers.js'
+import { createPublishers } from './kafka/publishers.js'
 
 async function main() {
   const { db, pool } = createDb(config.DATABASE_URL)
@@ -37,9 +38,7 @@ async function main() {
     db,
     cartClient,
     productClient,
-    publishOrderPlaced: (data) => producer.publish(Topics.ORDER_PLACED, data),
-    publishOrderStatusChanged: (data) =>
-      producer.publish(Topics.ORDER_STATUS_CHANGED, data),
+    ...createPublishers(producer),
     createSaga: saga,
   })
 
