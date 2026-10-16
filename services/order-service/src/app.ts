@@ -83,6 +83,12 @@ export async function buildApp(opts: IBuildAppOptions) {
   await app.register(docsPlugin, { title: 'order-service' })
   await app.register(authPlugin, { publicPrefixes: [DOCS_PREFIX] })
 
+  app.get(
+    '/health',
+    { config: { skipAuth: true }, schema: { hide: true } },
+    async () => ({ status: 'ok' }),
+  )
+
   const orderService = createOrderService({
     db,
     cartClient,

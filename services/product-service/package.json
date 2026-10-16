@@ -5,8 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "seed": "tsx src/db/seed.ts",
     "db:generate": "drizzle-kit generate",
+    "build": "tsc",
     "test": "vitest run"
   },
   "dependencies": {
@@ -28,5 +28,9 @@
     "tsx": "^4.19.0",
     "typescript": "^5.8.0",
     "vitest": "^3.0.0"
-  }
+  },
+  "files": [
+    "dist",
+    "drizzle"
+  ]
 }
