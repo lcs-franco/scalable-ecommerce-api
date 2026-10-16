@@ -10,15 +10,22 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./testing": {
+      "import": "./dist/testing.js",
+      "types": "./dist/testing.d.ts"
     }
   },
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "test": "vitest run"
   },
   "dependencies": {
     "kafkajs": "^2.2.4",
     "zod": "^3.24.0"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "vitest": "^2.1.9"
+  }
 }

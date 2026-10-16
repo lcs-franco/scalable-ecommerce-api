@@ -6,6 +6,7 @@
       "@ecommerce/auth": ["./packages/auth/src/index.ts"],
       "@ecommerce/docs": ["./packages/docs/src/index.ts"],
       "@ecommerce/events": ["./packages/events/src/index.ts"],
+      "@ecommerce/events/testing": ["./packages/events/src/testing.ts"],
       "@ecommerce/logger": ["./packages/logger/src/index.ts"]
     }
   },
