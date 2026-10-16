@@ -8,7 +8,9 @@ const envSchema = z.object({
   KAFKA_BROKER: z.string().default('localhost:9092'),
   CART_SERVICE_URL: z.string().url(),
   PRODUCT_SERVICE_URL: z.string().url(),
-  INTERNAL_SERVICE_TOKEN: z.string().min(1),
+  INTERNAL_SERVICE_TOKEN: z
+    .string()
+    .min(16, 'INTERNAL_SERVICE_TOKEN must be at least 16 characters'),
 })
 
 export const config = envSchema.parse(process.env)
