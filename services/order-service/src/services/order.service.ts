@@ -16,6 +16,7 @@ export interface IListOptions {
 }
 
 type OrderStatus = 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled'
+type Order = typeof orders.$inferSelect
 
 const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   pending: ['paid', 'cancelled'],
@@ -39,7 +40,7 @@ interface IDeps {
 }
 
 function toStatusChanged(
-  order: typeof orders.$inferSelect,
+  order: Order,
 ): EventData<typeof Topics.ORDER_STATUS_CHANGED> {
   return {
     orderId: order.id,
@@ -173,11 +174,10 @@ export function createOrderService(deps: IDeps) {
       throw new InvalidStatusTransition(currentStatus, newStatus)
     }
 
-    const [updated] = await db
-      .update(orders)
-      .set({ status: newStatus })
-      .where(and(eq(orders.id, id), eq(orders.status, currentStatus)))
-      .returning()
+    const updated =
+      newStatus === 'cancelled'
+        ? await cancel(id, currentStatus)
+        : await transition(existing, newStatus)
 
     if (!updated) {
       const [latest] = await db
@@ -215,11 +215,7 @@ export function createOrderService(deps: IDeps) {
   }
 
   async function markAsCancelled(orderId: string) {
-    const [row] = await db
-      .update(orders)
-      .set({ status: 'cancelled' })
-      .where(and(eq(orders.id, orderId), eq(orders.status, 'pending')))
-      .returning()
+    const row = await cancel(orderId, 'pending')
     if (!row) return
 
     try {
@@ -227,6 +223,45 @@ export function createOrderService(deps: IDeps) {
     } catch {
       // Fire-and-forget — don't fail the consumer
     }
+  }
+
+  async function transition(order: Order, status: OrderStatus) {
+    const [row] = await db
+      .update(orders)
+      .set({ status })
+      .where(and(eq(orders.id, order.id), eq(orders.status, order.status)))
+      .returning()
+    return row
+  }
+
+  async function cancel(orderId: string, from: OrderStatus) {
+    return db.transaction(async (tx) => {
+      const [order] = await tx
+        .select()
+        .from(orders)
+        .where(and(eq(orders.id, orderId), eq(orders.status, from)))
+        // Held across the restore call so a concurrent markAsPaid cannot land
+        // between the restore and the update.
+        .for('update')
+      if (!order) return undefined
+
+      const items = await tx
+        .select({
+          productId: orderItems.productId,
+          quantity: orderItems.quantity,
+        })
+        .from(orderItems)
+        .where(eq(orderItems.orderId, orderId))
+
+      await productClient.restoreOrderStock(orderId, items)
+
+      const [row] = await tx
+        .update(orders)
+        .set({ status: 'cancelled' })
+        .where(eq(orders.id, orderId))
+        .returning()
+      return row
+    })
   }
 
   return {

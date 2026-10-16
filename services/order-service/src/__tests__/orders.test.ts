@@ -36,12 +36,48 @@ describe('order routes', () => {
     await pool.end()
   })
 
-  async function placeTestOrder(token?: string) {
-    return app.inject({
+  function setStatus(orderId: string, status: string, target = app) {
+    return target.inject({
+      method: 'PATCH',
+      url: `/orders/${orderId}/status`,
+      headers: { authorization: `Bearer ${adminToken(target)}` },
+      payload: { status },
+    })
+  }
+
+  async function orderStatus(orderId: string) {
+    const res = await app.inject({
+      method: 'GET',
+      url: `/orders/${orderId}`,
+      headers: { authorization: `Bearer ${adminToken(app)}` },
+    })
+    return res.json().status
+  }
+
+  async function placeTestOrder(token?: string, target = app) {
+    return target.inject({
       method: 'POST',
       url: '/orders',
-      headers: { authorization: `Bearer ${token ?? userToken(app)}` },
+      headers: { authorization: `Bearer ${token ?? userToken(target)}` },
     })
+  }
+
+  const ORDER_ITEMS = [
+    { productId: PRODUCT_1, quantity: 2 },
+    { productId: PRODUCT_2, quantity: 1 },
+  ]
+
+  async function withApp(
+    productClient: ReturnType<typeof mockProductClient>,
+    fn: (ctx: Awaited<ReturnType<typeof createTestApp>>) => Promise<void>,
+  ) {
+    const ctx = await createTestApp({ productClient })
+    try {
+      await fn(ctx)
+    } finally {
+      await ctx.app.close()
+      await ctx.pool.end()
+    }
   }
 
   describe('POST /orders', () => {
@@ -282,53 +318,151 @@ describe('order routes', () => {
   })
 
   describe('markAsCancelled', () => {
-    it('should publish order.status-changed event', async () => {
-      const createRes = await placeTestOrder()
-      const orderId = createRes.json().id
-      publishers.events.length = 0
+    it('should restore stock, cancel and publish order.status-changed', async () => {
+      const orderId = (await placeTestOrder()).json().id
+      const productClient = mockProductClient()
 
-      const ctx = await createTestApp()
-      try {
-        const items = await ctx.orderService.markAsCancelled(orderId)
+      await withApp(productClient, async (ctx) => {
+        await ctx.orderService.markAsCancelled(orderId)
 
-        expect(items).not.toBeNull()
-        expect(ctx.publishers.events).toHaveLength(1)
-        expect(ctx.publishers.events[0]).toEqual({
-          topic: 'order.status-changed',
-          data: {
-            orderId,
-            userId: DEFAULT_USER_ID,
-            email: DEFAULT_USER_EMAIL,
-            status: 'cancelled',
+        expect(productClient.restoreOrderStockCalls).toEqual([
+          { orderId, items: ORDER_ITEMS },
+        ])
+        expect(await orderStatus(orderId)).toBe('cancelled')
+        expect(ctx.publishers.events).toEqual([
+          {
+            topic: 'order.status-changed',
+            data: {
+              orderId,
+              userId: DEFAULT_USER_ID,
+              email: DEFAULT_USER_EMAIL,
+              status: 'cancelled',
+            },
           },
-        })
-      } finally {
-        await ctx.app.close()
-        await ctx.pool.end()
-      }
+        ])
+      })
     })
 
-    it('should not publish event when order is not pending', async () => {
-      const createRes = await placeTestOrder()
-      const orderId = createRes.json().id
+    it('should restore stock only once when the event is redelivered', async () => {
+      const orderId = (await placeTestOrder()).json().id
+      const productClient = mockProductClient()
 
-      await app.inject({
-        method: 'PATCH',
-        url: `/orders/${orderId}/status`,
-        headers: { authorization: `Bearer ${adminToken(app)}` },
-        payload: { status: 'paid' },
+      await withApp(productClient, async (ctx) => {
+        await ctx.orderService.markAsCancelled(orderId)
+        await ctx.orderService.markAsCancelled(orderId)
+
+        expect(productClient.restoreOrderStockCalls).toHaveLength(1)
+        expect(ctx.publishers.events).toHaveLength(1)
       })
-      publishers.events.length = 0
+    })
 
-      const ctx = await createTestApp()
-      try {
-        const items = await ctx.orderService.markAsCancelled(orderId)
-        expect(items).toBeUndefined()
-        expect(ctx.publishers.events).toHaveLength(0)
-      } finally {
-        await ctx.app.close()
-        await ctx.pool.end()
+    it('should rethrow and keep the order pending when restore fails', async () => {
+      const orderId = (await placeTestOrder()).json().id
+      const productClient = mockProductClient()
+      productClient.restoreOrderStock = async () => {
+        throw new Error('product-service down')
       }
+
+      await withApp(productClient, async (ctx) => {
+        await expect(ctx.orderService.markAsCancelled(orderId)).rejects.toThrow(
+          'product-service down',
+        )
+
+        expect(await orderStatus(orderId)).toBe('pending')
+        expect(ctx.publishers.events).toHaveLength(0)
+      })
+    })
+
+    it('should not let a concurrent payment confirmation win after stock is restored', async () => {
+      const orderId = (await placeTestOrder()).json().id
+      const productClient = mockProductClient()
+
+      await withApp(productClient, async (ctx) => {
+        let paid: Promise<void> | undefined
+        productClient.restoreOrderStock = async () => {
+          paid = ctx.orderService.markAsPaid(orderId)
+          await new Promise((resolve) => setTimeout(resolve, 100))
+        }
+
+        await ctx.orderService.markAsCancelled(orderId)
+        await paid
+
+        expect(await orderStatus(orderId)).toBe('cancelled')
+        expect(ctx.publishers.events).toEqual([
+          expect.objectContaining({
+            data: expect.objectContaining({ status: 'cancelled' }),
+          }),
+        ])
+      })
+    })
+
+    it('should do nothing when order is not pending', async () => {
+      const orderId = (await placeTestOrder()).json().id
+      await setStatus(orderId, 'paid')
+      const productClient = mockProductClient()
+
+      await withApp(productClient, async (ctx) => {
+        await ctx.orderService.markAsCancelled(orderId)
+
+        expect(productClient.restoreOrderStockCalls).toHaveLength(0)
+        expect(await orderStatus(orderId)).toBe('paid')
+        expect(ctx.publishers.events).toHaveLength(0)
+      })
+    })
+  })
+
+  describe('PATCH /orders/:id/status to cancelled', () => {
+    it.each(['pending', 'paid'] as const)(
+      'should restore stock when cancelling a %s order',
+      async (from) => {
+        const productClient = mockProductClient()
+
+        await withApp(productClient, async (ctx) => {
+          const orderId = (await placeTestOrder(undefined, ctx.app)).json().id
+          if (from === 'paid') await setStatus(orderId, 'paid', ctx.app)
+
+          const res = await setStatus(orderId, 'cancelled', ctx.app)
+
+          expect(res.statusCode).toBe(200)
+          expect(res.json().status).toBe('cancelled')
+          expect(productClient.restoreOrderStockCalls).toEqual([
+            { orderId, items: ORDER_ITEMS },
+          ])
+        })
+      },
+    )
+
+    it('should not restore stock for an invalid transition', async () => {
+      const productClient = mockProductClient()
+
+      await withApp(productClient, async (ctx) => {
+        const orderId = (await placeTestOrder(undefined, ctx.app)).json().id
+        await setStatus(orderId, 'paid', ctx.app)
+        await setStatus(orderId, 'shipped', ctx.app)
+
+        const res = await setStatus(orderId, 'cancelled', ctx.app)
+
+        expect(res.statusCode).toBe(409)
+        expect(productClient.restoreOrderStockCalls).toHaveLength(0)
+      })
+    })
+
+    it('should fail and keep the order unchanged when restore fails', async () => {
+      const productClient = mockProductClient()
+      productClient.restoreOrderStock = async () => {
+        throw new Error('product-service down')
+      }
+
+      await withApp(productClient, async (ctx) => {
+        const orderId = (await placeTestOrder(undefined, ctx.app)).json().id
+        ctx.publishers.events.length = 0
+
+        const res = await setStatus(orderId, 'cancelled', ctx.app)
+
+        expect(res.statusCode).toBe(500)
+        expect(await orderStatus(orderId)).toBe('pending')
+        expect(ctx.publishers.events).toHaveLength(0)
+      })
     })
   })
 

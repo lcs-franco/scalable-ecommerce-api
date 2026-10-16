@@ -36,3 +36,10 @@ export const products = pgTable('products', {
     .defaultNow()
     .$onUpdate(() => new Date()),
 })
+
+export const stockRestorations = pgTable('stock_restorations', {
+  orderId: uuid('order_id').primaryKey(),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+})

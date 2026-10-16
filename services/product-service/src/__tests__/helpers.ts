@@ -41,6 +41,7 @@ export function userToken(
 }
 
 export async function cleanDb(db: ReturnType<typeof createDb>['db']) {
+  await db.execute(sql`DELETE FROM stock_restorations`)
   await db.execute(sql`DELETE FROM products`)
   await db.execute(sql`DELETE FROM categories`)
 }

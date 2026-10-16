@@ -342,4 +342,101 @@ describe('product routes', () => {
       expect(res.statusCode).toBe(404)
     })
   })
+
+  describe('POST /products/orders/:orderId/restore-stock', () => {
+    const ORDER_1 = '00000000-0000-0000-0000-00000000a001'
+    const ORDER_2 = '00000000-0000-0000-0000-00000000a002'
+
+    function restoreOrderStock(
+      orderId: string,
+      items: { productId: string; quantity: number }[],
+      token = 'test-internal-token',
+    ) {
+      return app.inject({
+        method: 'POST',
+        url: `/products/orders/${orderId}/restore-stock`,
+        headers: { 'x-internal-token': token },
+        payload: { items },
+      })
+    }
+
+    async function stockOf(productId: string) {
+      const res = await app.inject({
+        method: 'GET',
+        url: `/products/${productId}`,
+      })
+      return res.json().stock
+    }
+
+    it('should return 401 without valid token', async () => {
+      const category = await createCategory(app)
+      const product = await createProduct(app, category.id, { stock: 10 })
+
+      const res = await restoreOrderStock(
+        ORDER_1,
+        [{ productId: product.id, quantity: 3 }],
+        'wrong-token',
+      )
+
+      expect(res.statusCode).toBe(401)
+      expect(await stockOf(product.id)).toBe(10)
+    })
+
+    it('should restore the order stock', async () => {
+      const category = await createCategory(app)
+      const product = await createProduct(app, category.id, { stock: 10 })
+
+      const res = await restoreOrderStock(ORDER_1, [
+        { productId: product.id, quantity: 3 },
+      ])
+
+      expect(res.statusCode).toBe(200)
+      expect(await stockOf(product.id)).toBe(13)
+    })
+
+    it('should restore only once per order', async () => {
+      const category = await createCategory(app)
+      const product = await createProduct(app, category.id, { stock: 10 })
+      const items = [{ productId: product.id, quantity: 3 }]
+
+      const first = await restoreOrderStock(ORDER_1, items)
+      const second = await restoreOrderStock(ORDER_1, items)
+
+      expect(first.statusCode).toBe(200)
+      expect(second.statusCode).toBe(200)
+      expect(await stockOf(product.id)).toBe(13)
+    })
+
+    it('should restore each order separately', async () => {
+      const category = await createCategory(app)
+      const product = await createProduct(app, category.id, { stock: 10 })
+      const items = [{ productId: product.id, quantity: 3 }]
+
+      await restoreOrderStock(ORDER_1, items)
+      await restoreOrderStock(ORDER_2, items)
+
+      expect(await stockOf(product.id)).toBe(16)
+    })
+
+    it('should skip products that no longer exist', async () => {
+      const category = await createCategory(app)
+      const product = await createProduct(app, category.id, { stock: 10 })
+
+      const res = await restoreOrderStock(ORDER_1, [
+        { productId: '00000000-0000-0000-0000-000000000000', quantity: 1 },
+        { productId: product.id, quantity: 3 },
+      ])
+
+      expect(res.statusCode).toBe(200)
+      expect(await stockOf(product.id)).toBe(13)
+    })
+
+    it('should return 400 for an invalid order id', async () => {
+      const res = await restoreOrderStock('not-a-uuid', [
+        { productId: '00000000-0000-0000-0000-000000000000', quantity: 1 },
+      ])
+
+      expect(res.statusCode).toBe(400)
+    })
+  })
 })
