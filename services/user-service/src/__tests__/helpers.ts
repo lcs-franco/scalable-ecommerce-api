@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm'
 import { buildApp } from '../app.js'
 import { createDb } from '../db/index.js'
+import type { createPublishers } from '../kafka/publishers.js'
 
 process.env.JWT_SECRET ??= 'test-secret'
 
@@ -8,7 +9,9 @@ const TEST_DATABASE_URL =
   process.env.DATABASE_URL ??
   'postgresql://ecommerce:ecommerce_dev@localhost:5432/user_db'
 
-export async function createTestApp() {
+export async function createTestApp(overrides?: {
+  publishers?: ReturnType<typeof createPublishers>
+}) {
   const { db, pool } = createDb(TEST_DATABASE_URL)
 
   const publishedEvents: Array<{
@@ -19,9 +22,11 @@ export async function createTestApp() {
 
   const app = await buildApp({
     db,
-    publishUserRegistered: async (data) => {
-      publishedEvents.push(data)
-    },
+    publishUserRegistered:
+      overrides?.publishers?.publishUserRegistered ??
+      (async (data) => {
+        publishedEvents.push(data)
+      }),
   })
 
   await app.ready()

@@ -1,8 +1,9 @@
-import { createProducer, Topics } from '@ecommerce/events'
+import { createProducer } from '@ecommerce/events'
 import { Kafka } from 'kafkajs'
 import { buildApp } from './app.js'
 import { config } from './config.js'
 import { createDb } from './db/index.js'
+import { createPublishers } from './kafka/publishers.js'
 
 async function main() {
   const { db, pool } = createDb(config.DATABASE_URL)
@@ -16,8 +17,7 @@ async function main() {
 
   const app = await buildApp({
     db,
-    publishUserRegistered: (data) =>
-      producer.publish(Topics.USER_REGISTERED, data),
+    ...createPublishers(producer),
   })
 
   const shutdown = async () => {
