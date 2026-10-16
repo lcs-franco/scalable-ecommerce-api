@@ -16,6 +16,7 @@ export interface IListOptions {
 }
 
 type OrderStatus = 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled'
+type Order = typeof orders.$inferSelect
 
 const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   pending: ['paid', 'cancelled'],
@@ -39,7 +40,7 @@ interface IDeps {
 }
 
 function toStatusChanged(
-  order: typeof orders.$inferSelect,
+  order: Order,
 ): EventData<typeof Topics.ORDER_STATUS_CHANGED> {
   return {
     orderId: order.id,
@@ -173,11 +174,10 @@ export function createOrderService(deps: IDeps) {
       throw new InvalidStatusTransition(currentStatus, newStatus)
     }
 
-    const [updated] = await db
-      .update(orders)
-      .set({ status: newStatus })
-      .where(and(eq(orders.id, id), eq(orders.status, currentStatus)))
-      .returning()
+    const updated =
+      newStatus === 'cancelled'
+        ? await cancel(id, currentStatus)
+        : await transition(existing, newStatus)
 
     if (!updated) {
       const [latest] = await db
@@ -215,18 +215,60 @@ export function createOrderService(deps: IDeps) {
   }
 
   async function markAsCancelled(orderId: string) {
-    const [row] = await db
-      .update(orders)
-      .set({ status: 'cancelled' })
-      .where(and(eq(orders.id, orderId), eq(orders.status, 'pending')))
-      .returning()
+    // Missing or no longer pending (e.g. a redelivery after the cancel): the
+    // stock was already restored, or must not be.
+    const row = await cancel(orderId, 'pending')
     if (!row) return
 
     try {
       await publishOrderStatusChanged(toStatusChanged(row))
     } catch {
-      // Fire-and-forget — don't fail the consumer
+      // Fire-and-forget — a redelivery would skip the cancelled order anyway
     }
+  }
+
+  // Guarded on the status the caller read, so a concurrent change wins.
+  async function transition(order: Order, status: OrderStatus) {
+    const [row] = await db
+      .update(orders)
+      .set({ status })
+      .where(and(eq(orders.id, order.id), eq(orders.status, order.status)))
+      .returning()
+    return row
+  }
+
+  // Cancels the order if it is still `from`, restoring its stock first.
+  // The row lock is held across the restore call, so a concurrent transition
+  // (e.g. markAsPaid) waits and then finds the order cancelled, instead of
+  // landing between the restore and the update. A failure rolls back and
+  // leaves the order as it was; the retry repeats a restore that
+  // product-service applies only once per order.
+  async function cancel(orderId: string, from: OrderStatus) {
+    return db.transaction(async (tx) => {
+      const [order] = await tx
+        .select()
+        .from(orders)
+        .where(and(eq(orders.id, orderId), eq(orders.status, from)))
+        .for('update')
+      if (!order) return undefined
+
+      const items = await tx
+        .select({
+          productId: orderItems.productId,
+          quantity: orderItems.quantity,
+        })
+        .from(orderItems)
+        .where(eq(orderItems.orderId, orderId))
+
+      await productClient.restoreOrderStock(orderId, items)
+
+      const [row] = await tx
+        .update(orders)
+        .set({ status: 'cancelled' })
+        .where(eq(orders.id, orderId))
+        .returning()
+      return row
+    })
   }
 
   return {

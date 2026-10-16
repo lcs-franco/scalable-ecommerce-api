@@ -52,5 +52,27 @@ export function createProductClient(opts: IProductClientOptions) {
     }
   }
 
-  return { validateOrder, restoreStock }
+  // Unlike restoreStock, throws so the caller (Kafka consumer, admin request)
+  // fails and retries. Safe to repeat: product-service restores once per order.
+  async function restoreOrderStock(
+    orderId: string,
+    items: IOrderItem[],
+  ): Promise<void> {
+    const res = await fetch(
+      `${opts.baseUrl}/products/orders/${orderId}/restore-stock`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-internal-token': opts.internalServiceToken,
+        },
+        body: JSON.stringify({ items }),
+      },
+    )
+    if (!res.ok) {
+      throw new Error(`Stock restore failed: ${res.status} ${await res.text()}`)
+    }
+  }
+
+  return { validateOrder, restoreStock, restoreOrderStock }
 }

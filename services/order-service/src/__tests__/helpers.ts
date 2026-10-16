@@ -23,7 +23,12 @@ export function mockCartClient() {
 }
 
 export function mockProductClient() {
+  const restoreOrderStockCalls: {
+    orderId: string
+    items: { productId: string; quantity: number }[]
+  }[] = []
   return {
+    restoreOrderStockCalls,
     validateOrder: async (
       items: { productId: string; quantity: number }[],
       _token: string,
@@ -35,6 +40,12 @@ export function mockProductClient() {
         quantity: item.quantity,
       })),
     restoreStock: async () => {},
+    restoreOrderStock: async (
+      orderId: string,
+      items: { productId: string; quantity: number }[],
+    ) => {
+      restoreOrderStockCalls.push({ orderId, items })
+    },
   }
 }
 
