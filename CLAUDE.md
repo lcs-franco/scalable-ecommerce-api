@@ -48,12 +48,12 @@ docker compose run --rm product-seed
 
 ### Shared Packages (`packages/`)
 
-| Package             | Purpose                                                                                                                            |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `@ecommerce/auth`   | Fastify plugin wrapping `@fastify/jwt`. Routes opt out via `{ config: { skipAuth: true } }`; path prefixes via `publicPrefixes`    |
-| `@ecommerce/docs`   | `docsPlugin`: OpenAPI (Swagger + Scalar) at `DOCS_PREFIX` (`/docs`) from Zod route schemas; `schema: { hide: true }` hides a route |
-| `@ecommerce/events` | Kafka topic constants, Zod event schemas, `createProducer`/`createConsumer` factories                                              |
-| `@ecommerce/logger` | Pino logger factory with per-service configuration                                                                                 |
+| Package             | Purpose                                                                                                                               |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `@ecommerce/auth`   | Fastify plugin wrapping `@fastify/jwt`. Routes opt out via `{ config: { skipAuth: true } }`; path prefixes via `publicPrefixes`       |
+| `@ecommerce/docs`   | `docsPlugin`: OpenAPI (Swagger + Scalar) at `DOCS_PREFIX` (`/docs`) from Zod route schemas; `schema: { hide: true }` hides a route    |
+| `@ecommerce/events` | Kafka topic constants, Zod event schemas, `createProducer`/`createConsumer` factories; test helpers under `@ecommerce/events/testing` |
+| `@ecommerce/logger` | Pino logger factory with per-service configuration                                                                                    |
 
 Packages must be built (`pnpm build`) before services can import them.
 
@@ -98,7 +98,8 @@ Single Postgres container hosts 4 logical databases (`init-databases.sh` creates
 - **Framework:** Vitest with 30s timeout, serial file execution
 - **Location:** `services/*/src/__tests__/*.test.ts`
 - **Pattern:** `createTestApp()` helper builds Fastify instance with real Postgres/Redis and mock Kafka publishers. `cleanDb()` resets tables between tests.
-- **CI:** GitHub Actions runs typecheck → build → test. Postgres and Redis run as service containers; Kafka is not available in CI.
+- **Kafka tests:** `kafka.test.ts` (and notification's `consumers.test.ts`) run `createPublishers` / `setupConsumers` against the real broker with `@ecommerce/events/testing` (`createTestConsumer`, `collectEvents`). Topics are shared, so filter received events by an id the test owns. Run them against the infra-only command above, not `pnpm dev`: the running services' consumer groups would also consume test messages.
+- **CI:** GitHub Actions runs typecheck → build → test. Postgres and Redis run as service containers; Kafka starts from `docker-compose.yml` (`kafka` + `kafka-init`).
 
 ## Environment Setup
 
