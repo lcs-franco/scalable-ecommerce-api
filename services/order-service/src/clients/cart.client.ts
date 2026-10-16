@@ -1,3 +1,6 @@
+import { CartEmpty, ErrorCode } from '../errors/index.js'
+import { readUpstreamError } from './upstream.js'
+
 interface ICartItem {
   productId: string
   quantity: number
@@ -18,7 +21,13 @@ export function createCartClient(opts: ICartClientOptions) {
       },
     })
     if (!res.ok) {
-      throw new Error(`Cart checkout failed: ${res.status} ${await res.text()}`)
+      const upstream = await readUpstreamError(res)
+      if (upstream.code === ErrorCode.CART_EMPTY) {
+        throw new CartEmpty()
+      }
+      throw new Error(
+        `Cart checkout failed: ${upstream.status} ${upstream.text}`,
+      )
     }
     const body = (await res.json()) as { items: ICartItem[] }
     return body.items

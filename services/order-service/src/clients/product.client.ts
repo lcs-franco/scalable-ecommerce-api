@@ -1,3 +1,6 @@
+import { ErrorCode, InsufficientStock } from '../errors/index.js'
+import { readUpstreamError } from './upstream.js'
+
 interface IOrderItem {
   productId: string
   quantity: number
@@ -29,8 +32,12 @@ export function createProductClient(opts: IProductClientOptions) {
       body: JSON.stringify({ items }),
     })
     if (!res.ok) {
+      const upstream = await readUpstreamError(res)
+      if (upstream.code === ErrorCode.INSUFFICIENT_STOCK) {
+        throw new InsufficientStock(upstream.message)
+      }
       throw new Error(
-        `Product validation failed: ${res.status} ${await res.text()}`,
+        `Product validation failed: ${upstream.status} ${upstream.text}`,
       )
     }
     const body = (await res.json()) as { items: IValidatedItem[] }

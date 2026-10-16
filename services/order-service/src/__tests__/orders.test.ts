@@ -1,4 +1,5 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { CartEmpty, InsufficientStock } from '../errors/index.js'
 import {
   adminToken,
   cleanDb,
@@ -68,10 +69,10 @@ describe('order routes', () => {
   ]
 
   async function withApp(
-    productClient: ReturnType<typeof mockProductClient>,
+    overrides: Parameters<typeof createTestApp>[0],
     fn: (ctx: Awaited<ReturnType<typeof createTestApp>>) => Promise<void>,
   ) {
-    const ctx = await createTestApp({ productClient })
+    const ctx = await createTestApp(overrides)
     try {
       await fn(ctx)
     } finally {
@@ -133,7 +134,35 @@ describe('order routes', () => {
       expect(res.statusCode).toBe(401)
     })
 
-    it('should compensate cart on product validation failure', async () => {
+    async function listAllOrders(target: typeof app) {
+      const res = await target.inject({
+        method: 'GET',
+        url: '/orders',
+        headers: { authorization: `Bearer ${adminToken(target)}` },
+      })
+      return res.json().items
+    }
+
+    it('should return 400 CART_EMPTY and create nothing when the cart is empty', async () => {
+      const cartClient = mockCartClient()
+      cartClient.checkout = async () => {
+        throw new CartEmpty()
+      }
+
+      await withApp({ cartClient }, async (ctx) => {
+        const res = await placeTestOrder(undefined, ctx.app)
+
+        expect(res.statusCode).toBe(400)
+        expect(res.json()).toEqual({
+          error: 'CART_EMPTY',
+          message: 'Cart is empty',
+        })
+        expect(await listAllOrders(ctx.app)).toEqual([])
+        expect(ctx.publishers.events).toEqual([])
+      })
+    })
+
+    it('should return 409 INSUFFICIENT_STOCK and restore the cart', async () => {
       let cartRestored = false
       const cartClient = mockCartClient()
       cartClient.restore = async () => {
@@ -141,22 +170,42 @@ describe('order routes', () => {
       }
       const productClient = mockProductClient()
       productClient.validateOrder = async () => {
-        throw new Error('Insufficient stock')
+        throw new InsufficientStock(
+          `Insufficient stock for product ${PRODUCT_1}`,
+        )
       }
 
-      const ctx = await createTestApp({ cartClient, productClient })
-      try {
-        const res = await ctx.app.inject({
-          method: 'POST',
-          url: '/orders',
-          headers: { authorization: `Bearer ${userToken(ctx.app)}` },
+      await withApp({ cartClient, productClient }, async (ctx) => {
+        const res = await placeTestOrder(undefined, ctx.app)
+
+        expect(res.statusCode).toBe(409)
+        expect(res.json()).toEqual({
+          error: 'INSUFFICIENT_STOCK',
+          message: `Insufficient stock for product ${PRODUCT_1}`,
         })
+        expect(cartRestored).toBe(true)
+        expect(await listAllOrders(ctx.app)).toEqual([])
+        expect(ctx.publishers.events).toEqual([])
+      })
+    })
+
+    it('should return 500 and restore the cart on an unexpected product failure', async () => {
+      let cartRestored = false
+      const cartClient = mockCartClient()
+      cartClient.restore = async () => {
+        cartRestored = true
+      }
+      const productClient = mockProductClient()
+      productClient.validateOrder = async () => {
+        throw new Error('Product validation failed: 502 Bad Gateway')
+      }
+
+      await withApp({ cartClient, productClient }, async (ctx) => {
+        const res = await placeTestOrder(undefined, ctx.app)
+
         expect(res.statusCode).toBe(500)
         expect(cartRestored).toBe(true)
-      } finally {
-        await ctx.app.close()
-        await ctx.pool.end()
-      }
+      })
     })
   })
 
@@ -322,7 +371,7 @@ describe('order routes', () => {
       const orderId = (await placeTestOrder()).json().id
       const productClient = mockProductClient()
 
-      await withApp(productClient, async (ctx) => {
+      await withApp({ productClient }, async (ctx) => {
         await ctx.orderService.markAsCancelled(orderId)
 
         expect(productClient.restoreOrderStockCalls).toEqual([
@@ -347,7 +396,7 @@ describe('order routes', () => {
       const orderId = (await placeTestOrder()).json().id
       const productClient = mockProductClient()
 
-      await withApp(productClient, async (ctx) => {
+      await withApp({ productClient }, async (ctx) => {
         await ctx.orderService.markAsCancelled(orderId)
         await ctx.orderService.markAsCancelled(orderId)
 
@@ -363,7 +412,7 @@ describe('order routes', () => {
         throw new Error('product-service down')
       }
 
-      await withApp(productClient, async (ctx) => {
+      await withApp({ productClient }, async (ctx) => {
         await expect(ctx.orderService.markAsCancelled(orderId)).rejects.toThrow(
           'product-service down',
         )
@@ -377,7 +426,7 @@ describe('order routes', () => {
       const orderId = (await placeTestOrder()).json().id
       const productClient = mockProductClient()
 
-      await withApp(productClient, async (ctx) => {
+      await withApp({ productClient }, async (ctx) => {
         let paid: Promise<void> | undefined
         productClient.restoreOrderStock = async () => {
           paid = ctx.orderService.markAsPaid(orderId)
@@ -401,7 +450,7 @@ describe('order routes', () => {
       await setStatus(orderId, 'paid')
       const productClient = mockProductClient()
 
-      await withApp(productClient, async (ctx) => {
+      await withApp({ productClient }, async (ctx) => {
         await ctx.orderService.markAsCancelled(orderId)
 
         expect(productClient.restoreOrderStockCalls).toHaveLength(0)
@@ -417,7 +466,7 @@ describe('order routes', () => {
       async (from) => {
         const productClient = mockProductClient()
 
-        await withApp(productClient, async (ctx) => {
+        await withApp({ productClient }, async (ctx) => {
           const orderId = (await placeTestOrder(undefined, ctx.app)).json().id
           if (from === 'paid') await setStatus(orderId, 'paid', ctx.app)
 
@@ -435,7 +484,7 @@ describe('order routes', () => {
     it('should not restore stock for an invalid transition', async () => {
       const productClient = mockProductClient()
 
-      await withApp(productClient, async (ctx) => {
+      await withApp({ productClient }, async (ctx) => {
         const orderId = (await placeTestOrder(undefined, ctx.app)).json().id
         await setStatus(orderId, 'paid', ctx.app)
         await setStatus(orderId, 'shipped', ctx.app)
@@ -453,7 +502,7 @@ describe('order routes', () => {
         throw new Error('product-service down')
       }
 
-      await withApp(productClient, async (ctx) => {
+      await withApp({ productClient }, async (ctx) => {
         const orderId = (await placeTestOrder(undefined, ctx.app)).json().id
         ctx.publishers.events.length = 0
 
