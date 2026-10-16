@@ -1,8 +1,9 @@
-import { timingSafeEqual } from 'node:crypto'
+/* eslint-disable @typescript-eslint/naming-convention */
 import createError from '@fastify/error'
 import fjwt from '@fastify/jwt'
 import type { FastifyInstance } from 'fastify'
 import fp from 'fastify-plugin'
+import { timingSafeEqual } from 'node:crypto'
 
 export type { FastifyJWT } from '@fastify/jwt'
 
@@ -17,7 +18,6 @@ const ACCESS_TOKEN_EXPIRY = 900 // 15 minutes in seconds
 export const INTERNAL_TOKEN_HEADER = 'x-internal-token'
 
 declare module '@fastify/jwt' {
-  // eslint-disable-next-line @typescript-eslint/naming-convention
   interface FastifyJWT {
     payload: ITokenPayload
     user: ITokenPayload
@@ -25,7 +25,6 @@ declare module '@fastify/jwt' {
 }
 
 declare module 'fastify' {
-  // eslint-disable-next-line @typescript-eslint/naming-convention
   interface FastifyContextConfig {
     skipAuth?: boolean
     internal?: boolean
