@@ -1,4 +1,5 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { CartEmpty } from '../errors/index.js'
 import {
   adminToken,
   cleanDb,
@@ -68,10 +69,10 @@ describe('order routes', () => {
   ]
 
   async function withApp(
-    productClient: ReturnType<typeof mockProductClient>,
+    overrides: Parameters<typeof createTestApp>[0],
     fn: (ctx: Awaited<ReturnType<typeof createTestApp>>) => Promise<void>,
   ) {
-    const ctx = await createTestApp({ productClient })
+    const ctx = await createTestApp(overrides)
     try {
       await fn(ctx)
     } finally {
@@ -131,6 +132,34 @@ describe('order routes', () => {
         url: '/orders',
       })
       expect(res.statusCode).toBe(401)
+    })
+
+    async function listAllOrders(target: typeof app) {
+      const res = await target.inject({
+        method: 'GET',
+        url: '/orders',
+        headers: { authorization: `Bearer ${adminToken(target)}` },
+      })
+      return res.json().items
+    }
+
+    it('should return 400 CART_EMPTY and create nothing when the cart is empty', async () => {
+      const cartClient = mockCartClient()
+      cartClient.checkout = async () => {
+        throw new CartEmpty()
+      }
+
+      await withApp({ cartClient }, async (ctx) => {
+        const res = await placeTestOrder(undefined, ctx.app)
+
+        expect(res.statusCode).toBe(400)
+        expect(res.json()).toEqual({
+          error: 'CART_EMPTY',
+          message: 'Cart is empty',
+        })
+        expect(await listAllOrders(ctx.app)).toEqual([])
+        expect(ctx.publishers.events).toEqual([])
+      })
     })
 
     it('should compensate cart on product validation failure', async () => {
@@ -322,7 +351,7 @@ describe('order routes', () => {
       const orderId = (await placeTestOrder()).json().id
       const productClient = mockProductClient()
 
-      await withApp(productClient, async (ctx) => {
+      await withApp({ productClient }, async (ctx) => {
         await ctx.orderService.markAsCancelled(orderId)
 
         expect(productClient.restoreOrderStockCalls).toEqual([
@@ -347,7 +376,7 @@ describe('order routes', () => {
       const orderId = (await placeTestOrder()).json().id
       const productClient = mockProductClient()
 
-      await withApp(productClient, async (ctx) => {
+      await withApp({ productClient }, async (ctx) => {
         await ctx.orderService.markAsCancelled(orderId)
         await ctx.orderService.markAsCancelled(orderId)
 
@@ -363,7 +392,7 @@ describe('order routes', () => {
         throw new Error('product-service down')
       }
 
-      await withApp(productClient, async (ctx) => {
+      await withApp({ productClient }, async (ctx) => {
         await expect(ctx.orderService.markAsCancelled(orderId)).rejects.toThrow(
           'product-service down',
         )
@@ -377,7 +406,7 @@ describe('order routes', () => {
       const orderId = (await placeTestOrder()).json().id
       const productClient = mockProductClient()
 
-      await withApp(productClient, async (ctx) => {
+      await withApp({ productClient }, async (ctx) => {
         let paid: Promise<void> | undefined
         productClient.restoreOrderStock = async () => {
           paid = ctx.orderService.markAsPaid(orderId)
@@ -401,7 +430,7 @@ describe('order routes', () => {
       await setStatus(orderId, 'paid')
       const productClient = mockProductClient()
 
-      await withApp(productClient, async (ctx) => {
+      await withApp({ productClient }, async (ctx) => {
         await ctx.orderService.markAsCancelled(orderId)
 
         expect(productClient.restoreOrderStockCalls).toHaveLength(0)
@@ -417,7 +446,7 @@ describe('order routes', () => {
       async (from) => {
         const productClient = mockProductClient()
 
-        await withApp(productClient, async (ctx) => {
+        await withApp({ productClient }, async (ctx) => {
           const orderId = (await placeTestOrder(undefined, ctx.app)).json().id
           if (from === 'paid') await setStatus(orderId, 'paid', ctx.app)
 
@@ -435,7 +464,7 @@ describe('order routes', () => {
     it('should not restore stock for an invalid transition', async () => {
       const productClient = mockProductClient()
 
-      await withApp(productClient, async (ctx) => {
+      await withApp({ productClient }, async (ctx) => {
         const orderId = (await placeTestOrder(undefined, ctx.app)).json().id
         await setStatus(orderId, 'paid', ctx.app)
         await setStatus(orderId, 'shipped', ctx.app)
@@ -453,7 +482,7 @@ describe('order routes', () => {
         throw new Error('product-service down')
       }
 
-      await withApp(productClient, async (ctx) => {
+      await withApp({ productClient }, async (ctx) => {
         const orderId = (await placeTestOrder(undefined, ctx.app)).json().id
         ctx.publishers.events.length = 0
 
