@@ -44,6 +44,7 @@ export interface IAuthOptions {
 
 function isPublicPath(url: string, publicPrefixes: string[]) {
   const path = url.split('?')[0]
+
   return publicPrefixes.some(
     (prefix) => path === prefix || path.startsWith(prefix + '/'),
   )
@@ -51,7 +52,9 @@ function isPublicPath(url: string, publicPrefixes: string[]) {
 
 function isValidInternalToken(header: unknown, expected: Buffer) {
   if (typeof header !== 'string') return false
+
   const received = Buffer.from(header)
+
   return (
     received.length === expected.length && timingSafeEqual(received, expected)
   )
@@ -60,18 +63,23 @@ function isValidInternalToken(header: unknown, expected: Buffer) {
 export const authPlugin = fp<IAuthOptions>(
   async function auth(app: FastifyInstance, opts) {
     const { publicPrefixes = [], internalToken } = opts
+
     const secret = process.env.JWT_SECRET
     if (!secret) throw new Error('JWT_SECRET env var is required')
+
     const expectedToken = internalToken ? Buffer.from(internalToken) : null
 
     app.register(fjwt, { secret, sign: { expiresIn: ACCESS_TOKEN_EXPIRY } })
 
     app.addHook('onRoute', (route) => {
       if (!route.config?.internal) return
+
       const name = `${route.method} ${route.url}`
+
       if (route.config.skipAuth) {
         throw new Error(`${name}: internal routes cannot set skipAuth`)
       }
+
       if (!expectedToken) {
         throw new Error(
           `${name}: internal routes need the internalToken option`,
@@ -81,14 +89,19 @@ export const authPlugin = fp<IAuthOptions>(
 
     app.addHook('onRequest', async (request, _reply) => {
       const config = request.routeOptions.config
+
       if (config.internal) {
         const header = request.headers[INTERNAL_TOKEN_HEADER]
+
         if (!expectedToken || !isValidInternalToken(header, expectedToken)) {
           throw new InvalidInternalToken()
         }
+
         return
       }
+
       if (config.skipAuth) return
+
       if (isPublicPath(request.url, publicPrefixes)) return
 
       await request.jwtVerify()
