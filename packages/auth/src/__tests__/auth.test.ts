@@ -8,8 +8,10 @@ beforeAll(() => {
   process.env.JWT_SECRET ??= 'test-secret-must-be-at-least-32-chars!'
 })
 
-async function buildTestApp(
-  internalToken: string | undefined = INTERNAL_TOKEN,
+async function createTestApp(
+  { internalToken }: { internalToken?: string } = {
+    internalToken: INTERNAL_TOKEN,
+  },
 ) {
   const app = Fastify()
   await app.register(authPlugin, { internalToken })
@@ -21,98 +23,83 @@ async function buildTestApp(
   return app
 }
 
-function userJwt(app: Awaited<ReturnType<typeof buildTestApp>>) {
-  return app.jwt.sign({ userId: 'user-id', email: 'u@test.com', role: 'user' })
-}
-
-let app: Awaited<ReturnType<typeof buildTestApp>> | undefined
+let app: Awaited<ReturnType<typeof createTestApp>>
 
 afterEach(async () => {
   await app?.close()
-  app = undefined
 })
+
+function userJwt() {
+  return app.jwt.sign({ userId: 'user-id', email: 'u@test.com', role: 'user' })
+}
+
+function callInternal(headers: Record<string, string> = {}) {
+  return app.inject({ method: 'POST', url: '/internal', headers })
+}
+
+function callPrivate(headers: Record<string, string> = {}) {
+  return app.inject({ method: 'GET', url: '/private', headers })
+}
 
 describe('internal routes', () => {
   it('rejects a request without the internal token', async () => {
-    app = await buildTestApp()
-    const res = await app.inject({ method: 'POST', url: '/internal' })
+    app = await createTestApp()
+    const res = await callInternal()
 
     expect(res.statusCode).toBe(401)
-    expect(res.json().code).toBe('FST_INTERNAL_TOKEN_INVALID')
+    expect(res.json().code).toBe('INTERNAL_TOKEN_INVALID')
   })
 
   it('rejects a wrong internal token', async () => {
-    app = await buildTestApp()
-    const res = await app.inject({
-      method: 'POST',
-      url: '/internal',
-      headers: { [INTERNAL_TOKEN_HEADER]: 'wrong-token' },
-    })
+    app = await createTestApp()
+    const res = await callInternal({ [INTERNAL_TOKEN_HEADER]: 'wrong-token' })
 
     expect(res.statusCode).toBe(401)
   })
 
   it('rejects a token that differs only in length', async () => {
-    app = await buildTestApp()
-    const res = await app.inject({
-      method: 'POST',
-      url: '/internal',
-      headers: { [INTERNAL_TOKEN_HEADER]: `${INTERNAL_TOKEN}x` },
+    app = await createTestApp()
+    const res = await callInternal({
+      [INTERNAL_TOKEN_HEADER]: `${INTERNAL_TOKEN}x`,
     })
 
     expect(res.statusCode).toBe(401)
   })
 
   it('accepts the correct internal token', async () => {
-    app = await buildTestApp()
-    const res = await app.inject({
-      method: 'POST',
-      url: '/internal',
-      headers: { [INTERNAL_TOKEN_HEADER]: INTERNAL_TOKEN },
-    })
+    app = await createTestApp()
+    const res = await callInternal({ [INTERNAL_TOKEN_HEADER]: INTERNAL_TOKEN })
 
     expect(res.statusCode).toBe(200)
   })
 
   it('rejects a user JWT', async () => {
-    app = await buildTestApp()
-    const res = await app.inject({
-      method: 'POST',
-      url: '/internal',
-      headers: { authorization: `Bearer ${userJwt(app)}` },
-    })
+    app = await createTestApp()
+    const res = await callInternal({ authorization: `Bearer ${userJwt()}` })
 
     expect(res.statusCode).toBe(401)
-    expect(res.json().code).toBe('FST_INTERNAL_TOKEN_INVALID')
+    expect(res.json().code).toBe('INTERNAL_TOKEN_INVALID')
   })
 })
 
 describe('JWT routes', () => {
   it('still require a JWT', async () => {
-    app = await buildTestApp()
-    const res = await app.inject({ method: 'GET', url: '/private' })
+    app = await createTestApp()
+    const res = await callPrivate()
 
     expect(res.statusCode).toBe(401)
   })
 
   it('do not accept the internal token', async () => {
-    app = await buildTestApp()
-    const res = await app.inject({
-      method: 'GET',
-      url: '/private',
-      headers: { [INTERNAL_TOKEN_HEADER]: INTERNAL_TOKEN },
-    })
+    app = await createTestApp()
+    const res = await callPrivate({ [INTERNAL_TOKEN_HEADER]: INTERNAL_TOKEN })
 
     expect(res.statusCode).toBe(401)
   })
 
   it('accept a valid JWT', async () => {
-    app = await buildTestApp()
-    const res = await app.inject({
-      method: 'GET',
-      url: '/private',
-      headers: { authorization: `Bearer ${userJwt(app)}` },
-    })
+    app = await createTestApp()
+    const res = await callPrivate({ authorization: `Bearer ${userJwt()}` })
 
     expect(res.statusCode).toBe(200)
   })
@@ -120,7 +107,7 @@ describe('JWT routes', () => {
 
 describe('route registration', () => {
   it('fails for an internal route without the internalToken option', async () => {
-    await expect(buildTestApp('')).rejects.toThrow(
+    await expect(createTestApp({})).rejects.toThrow(
       'internal routes need the internalToken option',
     )
   })

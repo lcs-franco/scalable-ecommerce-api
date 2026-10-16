@@ -33,7 +33,7 @@ declare module 'fastify' {
 }
 
 const InvalidInternalToken = createError(
-  'FST_INTERNAL_TOKEN_INVALID',
+  'INTERNAL_TOKEN_INVALID',
   'Invalid or missing internal service token',
   401,
 )
