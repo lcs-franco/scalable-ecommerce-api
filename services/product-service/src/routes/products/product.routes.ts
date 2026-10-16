@@ -1,7 +1,7 @@
 import '@ecommerce/auth'
 import type { FastifyInstance, FastifyPluginOptions } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
-import { Forbidden, Unauthorized } from '../../errors/index.js'
+import { Forbidden } from '../../errors/index.js'
 import type { createProductService } from '../../services/product.service.js'
 import {
   CreateProductBodySchema,
@@ -15,19 +15,14 @@ import {
 
 interface IDeps extends FastifyPluginOptions {
   productService: ReturnType<typeof createProductService>
-  internalServiceToken: string
 }
 
 function requireAdmin(role: string) {
   if (role !== 'admin') throw new Forbidden()
 }
 
-function requireInternalToken(header: string | undefined, expected: string) {
-  if (header !== expected) throw new Unauthorized()
-}
-
 export async function productRoutes(fastify: FastifyInstance, deps: IDeps) {
-  const { productService, internalServiceToken } = deps
+  const { productService } = deps
   const app = fastify.withTypeProvider<ZodTypeProvider>()
 
   app.get(
@@ -98,19 +93,14 @@ export async function productRoutes(fastify: FastifyInstance, deps: IDeps) {
     },
   )
 
-  // Internal endpoint — called service-to-service by order-service.
-  // Authenticated via shared secret (x-internal-token), not JWT.
+  // Called by order-service.
   app.post(
     '/products/restore-stock',
     {
-      config: { skipAuth: true },
-      schema: { body: RestoreStockBodySchema, hide: true },
+      config: { internal: true },
+      schema: { body: RestoreStockBodySchema },
     },
     async (request, reply) => {
-      requireInternalToken(
-        request.headers['x-internal-token'] as string,
-        internalServiceToken,
-      )
       await productService.restoreStock(request.body.items)
       return reply.send({ message: 'Stock restored' })
     },
@@ -119,18 +109,10 @@ export async function productRoutes(fastify: FastifyInstance, deps: IDeps) {
   app.post(
     '/products/orders/:orderId/restore-stock',
     {
-      config: { skipAuth: true },
-      schema: {
-        params: OrderParamsSchema,
-        body: RestoreStockBodySchema,
-        hide: true,
-      },
+      config: { internal: true },
+      schema: { params: OrderParamsSchema, body: RestoreStockBodySchema },
     },
     async (request, reply) => {
-      requireInternalToken(
-        request.headers['x-internal-token'] as string,
-        internalServiceToken,
-      )
       await productService.restoreOrderStock(
         request.params.orderId,
         request.body.items,

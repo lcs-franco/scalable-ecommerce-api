@@ -59,7 +59,10 @@ export async function buildApp(opts: IBuildAppOptions) {
   )
 
   await app.register(docsPlugin, { title: 'cart-service' })
-  await app.register(authPlugin, { publicPrefixes: [DOCS_PREFIX] })
+  await app.register(authPlugin, {
+    publicPrefixes: [DOCS_PREFIX],
+    internalToken: opts.internalServiceToken,
+  })
 
   app.get(
     '/health',
@@ -71,11 +74,7 @@ export async function buildApp(opts: IBuildAppOptions) {
   const productClient = createProductClient(opts.productServiceUrl)
 
   await app.register(async (instance) => {
-    await cartRoutes(instance, {
-      cartService,
-      productClient,
-      internalServiceToken: opts.internalServiceToken,
-    })
+    await cartRoutes(instance, { cartService, productClient })
   })
 
   return app

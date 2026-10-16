@@ -19,13 +19,15 @@ export const docsPlugin = fp<IDocsOptions>(
   async function docs(app: FastifyInstance, opts) {
     const { title, description, version = '1.0.0' } = opts
 
-    // Public routes opt out of JWT via `config.skipAuth`; mirror that in the
-    // spec so they are not shown as protected by the global bearerAuth.
+    // Untyped on purpose: docs must not depend on @ecommerce/auth.
     app.addHook('onRoute', (routeOptions) => {
-      const config = routeOptions.config as { skipAuth?: boolean } | undefined
-      if (!config?.skipAuth) return
-
-      routeOptions.schema = { ...routeOptions.schema, security: [] }
+      const config = routeOptions.config as
+        { skipAuth?: boolean; internal?: boolean } | undefined
+      if (config?.internal) {
+        routeOptions.schema = { ...routeOptions.schema, hide: true }
+      } else if (config?.skipAuth) {
+        routeOptions.schema = { ...routeOptions.schema, security: [] }
+      }
     })
 
     await app.register(fastifySwagger, {

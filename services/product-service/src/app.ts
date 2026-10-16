@@ -62,7 +62,10 @@ export async function buildApp(opts: IBuildAppOptions) {
   )
 
   await app.register(docsPlugin, { title: 'product-service' })
-  await app.register(authPlugin, { publicPrefixes: [DOCS_PREFIX] })
+  await app.register(authPlugin, {
+    publicPrefixes: [DOCS_PREFIX],
+    internalToken: opts.internalServiceToken,
+  })
 
   app.get(
     '/health',
@@ -75,10 +78,7 @@ export async function buildApp(opts: IBuildAppOptions) {
 
   await app.register(async (instance) => {
     await categoryRoutes(instance, { categoryService })
-    await productRoutes(instance, {
-      productService,
-      internalServiceToken: opts.internalServiceToken,
-    })
+    await productRoutes(instance, { productService })
   })
 
   return app
