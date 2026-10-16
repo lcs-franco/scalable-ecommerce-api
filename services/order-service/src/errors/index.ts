@@ -1,6 +1,7 @@
 export { ApplicationError } from './application/ApplicationError.js'
 export { CartEmpty } from './application/CartEmpty.js'
 export { Forbidden } from './application/Forbidden.js'
+export { InsufficientStock } from './application/InsufficientStock.js'
 export { InvalidStatusTransition } from './application/InvalidStatusTransition.js'
 export { OrderNotFound } from './application/OrderNotFound.js'
 export { ErrorCode } from './ErrorCode.js'

@@ -1,7 +1,12 @@
 import Fastify, { type FastifyInstance } from 'fastify'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createCartClient } from '../clients/cart.client.js'
-import { ApplicationError, CartEmpty } from '../errors/index.js'
+import { createProductClient } from '../clients/product.client.js'
+import {
+  ApplicationError,
+  CartEmpty,
+  InsufficientStock,
+} from '../errors/index.js'
 
 describe('service clients', () => {
   let upstream: FastifyInstance
@@ -51,6 +56,55 @@ describe('service clients', () => {
         expect(error).not.toBeInstanceOf(ApplicationError)
         expect((error as Error).message).toMatch(
           `Cart checkout failed: ${status}`,
+        )
+      },
+    )
+  })
+
+  describe('product client validateOrder', () => {
+    const productClient = () =>
+      createProductClient({ baseUrl, internalServiceToken: 'token' })
+    const items = [{ productId: 'product-1', quantity: 2 }]
+
+    it('should throw InsufficientStock with the upstream message', async () => {
+      upstreamReplies(409, {
+        error: 'INSUFFICIENT_STOCK',
+        message: 'Insufficient stock for product product-1',
+      })
+
+      const error = await productClient()
+        .validateOrder(items, 'jwt')
+        .catch((e: unknown) => e)
+      expect(error).toBeInstanceOf(InsufficientStock)
+      expect((error as Error).message).toBe(
+        'Insufficient stock for product product-1',
+      )
+    })
+
+    it('should fall back to a generic message when upstream sends none', async () => {
+      upstreamReplies(409, { error: 'INSUFFICIENT_STOCK' })
+
+      await expect(productClient().validateOrder(items, 'jwt')).rejects.toThrow(
+        new InsufficientStock('Insufficient stock'),
+      )
+    })
+
+    it.each([
+      [400, { error: 'body/items Invalid', message: 'body/items Invalid' }],
+      [401, { error: 'Unauthorized', message: 'No Authorization' }],
+      [500, { error: 'INTERNAL_SERVER_ERROR', message: 'boom' }],
+      [502, 'Bad Gateway'],
+    ])(
+      'should throw a generic error on unexpected %i',
+      async (status, body) => {
+        upstreamReplies(status, body)
+
+        const error = await productClient()
+          .validateOrder(items, 'jwt')
+          .catch((e: unknown) => e)
+        expect(error).not.toBeInstanceOf(ApplicationError)
+        expect((error as Error).message).toMatch(
+          `Product validation failed: ${status}`,
         )
       },
     )

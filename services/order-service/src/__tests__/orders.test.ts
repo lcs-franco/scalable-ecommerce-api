@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
-import { CartEmpty } from '../errors/index.js'
+import { CartEmpty, InsufficientStock } from '../errors/index.js'
 import {
   adminToken,
   cleanDb,
@@ -162,7 +162,7 @@ describe('order routes', () => {
       })
     })
 
-    it('should compensate cart on product validation failure', async () => {
+    it('should return 409 INSUFFICIENT_STOCK and restore the cart', async () => {
       let cartRestored = false
       const cartClient = mockCartClient()
       cartClient.restore = async () => {
@@ -170,22 +170,42 @@ describe('order routes', () => {
       }
       const productClient = mockProductClient()
       productClient.validateOrder = async () => {
-        throw new Error('Insufficient stock')
+        throw new InsufficientStock(
+          `Insufficient stock for product ${PRODUCT_1}`,
+        )
       }
 
-      const ctx = await createTestApp({ cartClient, productClient })
-      try {
-        const res = await ctx.app.inject({
-          method: 'POST',
-          url: '/orders',
-          headers: { authorization: `Bearer ${userToken(ctx.app)}` },
+      await withApp({ cartClient, productClient }, async (ctx) => {
+        const res = await placeTestOrder(undefined, ctx.app)
+
+        expect(res.statusCode).toBe(409)
+        expect(res.json()).toEqual({
+          error: 'INSUFFICIENT_STOCK',
+          message: `Insufficient stock for product ${PRODUCT_1}`,
         })
+        expect(cartRestored).toBe(true)
+        expect(await listAllOrders(ctx.app)).toEqual([])
+        expect(ctx.publishers.events).toEqual([])
+      })
+    })
+
+    it('should return 500 and restore the cart on an unexpected product failure', async () => {
+      let cartRestored = false
+      const cartClient = mockCartClient()
+      cartClient.restore = async () => {
+        cartRestored = true
+      }
+      const productClient = mockProductClient()
+      productClient.validateOrder = async () => {
+        throw new Error('Product validation failed: 502 Bad Gateway')
+      }
+
+      await withApp({ cartClient, productClient }, async (ctx) => {
+        const res = await placeTestOrder(undefined, ctx.app)
+
         expect(res.statusCode).toBe(500)
         expect(cartRestored).toBe(true)
-      } finally {
-        await ctx.app.close()
-        await ctx.pool.end()
-      }
+      })
     })
   })
 
