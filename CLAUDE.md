@@ -48,12 +48,12 @@ docker compose run --rm product-seed
 
 ### Shared Packages (`packages/`)
 
-| Package             | Purpose                                                                                                                                                                                                                                                                     |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@ecommerce/auth`   | Fastify plugin wrapping `@fastify/jwt`. Routes opt out via `{ config: { skipAuth: true } }`; path prefixes via `publicPrefixes`. `{ config: { internal: true } }` routes require `x-internal-token` (plugin option `internalToken`) instead of JWT and are hidden from docs |
-| `@ecommerce/docs`   | `docsPlugin`: OpenAPI (Swagger + Scalar) at `DOCS_PREFIX` (`/docs`) from Zod route schemas; `schema: { hide: true }` hides a route                                                                                                                                          |
-| `@ecommerce/events` | Kafka topic constants, Zod event schemas, `createProducer`/`createConsumer` factories; test helpers under `@ecommerce/events/testing`                                                                                                                                       |
-| `@ecommerce/logger` | Pino logger factory with per-service configuration                                                                                                                                                                                                                          |
+| Package             | Purpose                                                                                                                                                                                                                                            |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@ecommerce/auth`   | Fastify plugin wrapping `@fastify/jwt`. Routes opt out via `{ config: { skipAuth: true } }`; path prefixes via `publicPrefixes`. `{ config: { internal: true } }` routes require `x-internal-token` (plugin option `internalToken`) instead of JWT |
+| `@ecommerce/docs`   | `docsPlugin`: OpenAPI (Swagger + Scalar) at `DOCS_PREFIX` (`/docs`) from Zod route schemas; `schema: { hide: true }` or `config: { internal: true }` hides a route                                                                                 |
+| `@ecommerce/events` | Kafka topic constants, Zod event schemas, `createProducer`/`createConsumer` factories; test helpers under `@ecommerce/events/testing`                                                                                                              |
+| `@ecommerce/logger` | Pino logger factory with per-service configuration                                                                                                                                                                                                 |
 
 Packages must be built (`pnpm build`) before services can import them.
 
