@@ -12,7 +12,7 @@ pnpm install
 docker compose up --build
 
 # Daily development: same, with hot reload of services/*/src (packages/* changes need a rebuild)
-pnpm dev:docker
+pnpm dev
 
 # Infrastructure only, enough for the tests (Postgres 16, Redis 7, Kafka KRaft + topics, Mailpit)
 docker compose up -d postgres redis kafka kafka-init mailpit

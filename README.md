@@ -65,7 +65,7 @@ packages/
 
 - Docker with Compose v2
 - A [Stripe test mode](https://dashboard.stripe.com/test/apikeys) secret key (`sk_test_...`): payments are processed against Stripe
-- Node.js 22 and pnpm 11 (for `pnpm dev:docker`, tests and lint)
+- Node.js 22 and pnpm 11 (for `pnpm dev`, tests and lint)
 
 ### Run the whole platform
 
@@ -86,6 +86,6 @@ Shopper journey through the gateway: `POST /api/auth/register` → `POST /api/au
 
 ### Develop
 
-`pnpm dev:docker` (stop with `pnpm dev:docker:down`) runs the platform with hot reload: each service runs `tsx watch` with its `src/` mounted, and ports 3001–3006 are exposed for debugging. Changes to `packages/*` or dependencies need a rebuild (`pnpm dev:docker` builds on start).
+`pnpm dev` (stop with `pnpm dev:down`) runs the platform with hot reload: each service runs `tsx watch` with its `src/` mounted, and ports 3001–3006 are exposed for debugging. Changes to `packages/*` or dependencies need a rebuild (`pnpm dev` builds on start).
 
 Tests run on the host against the infrastructure containers: `pnpm install && pnpm build`, then `pnpm test`.
