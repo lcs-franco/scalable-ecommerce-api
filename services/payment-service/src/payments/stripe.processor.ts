@@ -8,7 +8,7 @@ import type {
 
 interface IStripeProcessorOptions {
   stripe: Pick<Stripe, 'paymentIntents'>
-  log: Pick<Logger, 'error'>
+  log: Pick<Logger, 'error' | 'warn'>
 }
 
 export function createStripeProcessor(
@@ -52,6 +52,14 @@ export function createStripeProcessor(
           reason: err.message,
           providerPaymentId: err.payment_intent?.id,
         }
+      }
+
+      if (
+        err instanceof Stripe.errors.StripeInvalidRequestError &&
+        err.param === 'payment_method'
+      ) {
+        log.warn(err, 'invalid payment method')
+        return { success: false, reason: 'invalid payment method' }
       }
 
       log.error(err, 'stripe payment failed')

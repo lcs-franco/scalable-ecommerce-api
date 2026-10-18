@@ -12,7 +12,7 @@ describe.skipIf(!key)('stripe processor (contract, test mode)', () => {
   function createProcessor() {
     return createStripeProcessor({
       stripe: new Stripe(key!, { maxNetworkRetries: 2 }),
-      log: { error: () => {} },
+      log: { error: () => {}, warn: () => {} },
     })
   }
 
@@ -44,6 +44,14 @@ describe.skipIf(!key)('stripe processor (contract, test mode)', () => {
       expect(result.reason).toMatch(/declined/i)
       expect(result.providerPaymentId).toMatch(/^pi_/)
     }
+  })
+
+  it('maps an unknown payment method to invalid payment method', async () => {
+    const result = await createProcessor().processPayment(
+      input('pm_does_not_exist'),
+    )
+
+    expect(result).toEqual({ success: false, reason: 'invalid payment method' })
   })
 
   it('returns the same PaymentIntent for the same idempotency key', async () => {

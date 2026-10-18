@@ -15,7 +15,7 @@ const INPUT = {
 
 describe('createStripeProcessor', () => {
   const create = vi.fn()
-  const log = { error: vi.fn() }
+  const log = { error: vi.fn(), warn: vi.fn() }
   const processor = createStripeProcessor({
     stripe: { paymentIntents: { create } } as unknown as Pick<
       Stripe,
@@ -27,6 +27,7 @@ describe('createStripeProcessor', () => {
   beforeEach(() => {
     create.mockReset()
     log.error.mockReset()
+    log.warn.mockReset()
   })
 
   it('is named stripe', () => {
@@ -100,6 +101,40 @@ describe('createStripeProcessor', () => {
       success: false,
       reason: 'Your card was declined.',
     })
+  })
+
+  it('maps an invalid payment method to failure and logs a warning', async () => {
+    const err = new Stripe.errors.StripeInvalidRequestError({
+      type: 'invalid_request_error',
+      code: 'resource_missing',
+      param: 'payment_method',
+      message: "No such PaymentMethod: 'pm_nope'",
+    })
+    create.mockRejectedValue(err)
+
+    await expect(processor.processPayment(INPUT)).resolves.toEqual({
+      success: false,
+      reason: 'invalid payment method',
+    })
+    expect(log.warn).toHaveBeenCalledOnce()
+    expect(log.warn.mock.calls[0]).toContain(err)
+    expect(log.error).not.toHaveBeenCalled()
+  })
+
+  it('maps an invalid request on another param to a generic failure', async () => {
+    create.mockRejectedValue(
+      new Stripe.errors.StripeInvalidRequestError({
+        type: 'invalid_request_error',
+        param: 'currency',
+        message: 'Invalid currency',
+      }),
+    )
+
+    await expect(processor.processPayment(INPUT)).resolves.toEqual({
+      success: false,
+      reason: 'payment provider error',
+    })
+    expect(log.error).toHaveBeenCalledOnce()
   })
 
   it('maps any other error to a generic failure and logs the details', async () => {
