@@ -19,15 +19,12 @@ interface IProductClientOptions {
 }
 
 export function createProductClient(opts: IProductClientOptions) {
-  async function validateOrder(
-    items: IOrderItem[],
-    token: string,
-  ): Promise<IValidatedItem[]> {
+  async function validateOrder(items: IOrderItem[]): Promise<IValidatedItem[]> {
     const res = await fetch(`${opts.baseUrl}/products/validate-order`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        'x-internal-token': opts.internalServiceToken,
       },
       body: JSON.stringify({ items }),
     })

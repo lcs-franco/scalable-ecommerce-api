@@ -70,7 +70,7 @@ export function createOrderService(deps: IDeps) {
       const cart = await cartClient.checkout(userId)
       s.addCompensation(() => cartClient.restore(cart, userToken))
 
-      const validatedItems = await productClient.validateOrder(cart, userToken)
+      const validatedItems = await productClient.validateOrder(cart)
       s.addCompensation(() => productClient.restoreStock(validatedItems))
 
       const total = validatedItems.reduce(

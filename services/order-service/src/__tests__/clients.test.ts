@@ -11,13 +11,18 @@ import {
 describe('service clients', () => {
   let upstream: FastifyInstance
   let baseUrl: string
+  let lastHeaders: Record<string, unknown>
   let respond: (reply: {
     status: (code: number) => { send: (body: unknown) => unknown }
   }) => unknown
 
   beforeAll(async () => {
     upstream = Fastify()
-    upstream.all('/*', async (_request, reply) => respond(reply))
+    upstream.all('/*', async (request, reply) => {
+      lastHeaders = request.headers
+
+      return respond(reply)
+    })
     baseUrl = await upstream.listen({ port: 0, host: '127.0.0.1' })
   })
 
@@ -66,6 +71,15 @@ describe('service clients', () => {
       createProductClient({ baseUrl, internalServiceToken: 'token' })
     const items = [{ productId: 'product-1', quantity: 2 }]
 
+    it('should authenticate with the internal token, not a user JWT', async () => {
+      upstreamReplies(200, { items: [] })
+
+      await productClient().validateOrder(items)
+
+      expect(lastHeaders['x-internal-token']).toBe('token')
+      expect(lastHeaders.authorization).toBeUndefined()
+    })
+
     it('should throw InsufficientStock with the upstream message', async () => {
       upstreamReplies(409, {
         error: 'INSUFFICIENT_STOCK',
@@ -73,7 +87,7 @@ describe('service clients', () => {
       })
 
       const error = await productClient()
-        .validateOrder(items, 'jwt')
+        .validateOrder(items)
         .catch((e: unknown) => e)
       expect(error).toBeInstanceOf(InsufficientStock)
       expect((error as Error).message).toBe(
@@ -84,7 +98,7 @@ describe('service clients', () => {
     it('should fall back to a generic message when upstream sends none', async () => {
       upstreamReplies(409, { error: 'INSUFFICIENT_STOCK' })
 
-      await expect(productClient().validateOrder(items, 'jwt')).rejects.toThrow(
+      await expect(productClient().validateOrder(items)).rejects.toThrow(
         new InsufficientStock('Insufficient stock'),
       )
     })
@@ -100,7 +114,7 @@ describe('service clients', () => {
         upstreamReplies(status, body)
 
         const error = await productClient()
-          .validateOrder(items, 'jwt')
+          .validateOrder(items)
           .catch((e: unknown) => e)
         expect(error).not.toBeInstanceOf(ApplicationError)
         expect((error as Error).message).toMatch(
