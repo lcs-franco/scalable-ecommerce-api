@@ -30,10 +30,7 @@ export function mockProductClient() {
   }[] = []
   return {
     restoreOrderStockCalls,
-    validateOrder: async (
-      items: { productId: string; quantity: number }[],
-      _token: string,
-    ) =>
+    validateOrder: async (items: { productId: string; quantity: number }[]) =>
       items.map((item) => ({
         productId: item.productId,
         name: `Product ${item.productId}`,

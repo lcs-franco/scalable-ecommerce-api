@@ -191,6 +191,26 @@ describe('product routes', () => {
   })
 
   describe('POST /products/validate-order', () => {
+    it('should return 401 for a user JWT and keep stock', async () => {
+      const category = await createCategory(app)
+      const product = await createProduct(app, category.id, { stock: 10 })
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/products/validate-order',
+        headers: { authorization: `Bearer ${userToken(app)}` },
+        payload: { items: [{ productId: product.id, quantity: 3 }] },
+      })
+
+      expect(res.statusCode).toBe(401)
+
+      const after = await app.inject({
+        method: 'GET',
+        url: `/products/${product.id}`,
+      })
+      expect(after.json().stock).toBe(10)
+    })
+
     it('should validate and decrement stock', async () => {
       const category = await createCategory(app)
       const product = await createProduct(app, category.id, {
@@ -202,7 +222,7 @@ describe('product routes', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/products/validate-order',
-        headers: { authorization: `Bearer ${adminToken(app)}` },
+        headers: { 'x-internal-token': 'test-internal-token' },
         payload: { items: [{ productId: product.id, quantity: 3 }] },
       })
 
@@ -230,7 +250,7 @@ describe('product routes', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/products/validate-order',
-        headers: { authorization: `Bearer ${adminToken(app)}` },
+        headers: { 'x-internal-token': 'test-internal-token' },
         payload: { items: [{ productId: product.id, quantity: 5 }] },
       })
 
@@ -252,7 +272,7 @@ describe('product routes', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/products/validate-order',
-        headers: { authorization: `Bearer ${adminToken(app)}` },
+        headers: { 'x-internal-token': 'test-internal-token' },
         payload: {
           items: [
             { productId: p1.id, quantity: 5 },
@@ -274,7 +294,7 @@ describe('product routes', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/products/validate-order',
-        headers: { authorization: `Bearer ${adminToken(app)}` },
+        headers: { 'x-internal-token': 'test-internal-token' },
         payload: { items: [] },
       })
 
@@ -304,7 +324,7 @@ describe('product routes', () => {
       await app.inject({
         method: 'POST',
         url: '/products/validate-order',
-        headers: { authorization: `Bearer ${adminToken(app)}` },
+        headers: { 'x-internal-token': 'test-internal-token' },
         payload: { items: [{ productId: product.id, quantity: 3 }] },
       })
 

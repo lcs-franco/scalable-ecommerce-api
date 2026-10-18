@@ -86,7 +86,10 @@ export async function productRoutes(fastify: FastifyInstance, deps: IDeps) {
 
   app.post(
     '/products/validate-order',
-    { schema: { body: ValidateOrderBodySchema } },
+    {
+      config: { internal: true },
+      schema: { body: ValidateOrderBodySchema },
+    },
     async (request, reply) => {
       const validated = await productService.validateOrder(request.body.items)
       return reply.send({ items: validated })
