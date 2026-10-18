@@ -55,6 +55,7 @@ describe('setupConsumers on the broker', () => {
         { productId: PRODUCT_ID, name: 'Mouse', quantity: 1, price: 2500 },
       ],
       total: 2500,
+      paymentMethodId: 'pm_card_visa',
     }
     const confirmed = {
       ...recipient,

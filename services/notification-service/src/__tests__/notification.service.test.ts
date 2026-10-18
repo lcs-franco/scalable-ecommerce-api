@@ -49,6 +49,7 @@ describe('NotificationService', () => {
         { productId: PRODUCT_ID, name: 'Mouse', quantity: 1, price: 2500 },
       ],
       total: 2500,
+      paymentMethodId: 'pm_card_visa',
     })
 
     expect(email.sent).toHaveLength(1)

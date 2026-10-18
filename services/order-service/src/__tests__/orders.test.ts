@@ -55,11 +55,14 @@ describe('order routes', () => {
     return res.json().status
   }
 
+  const PAYMENT_METHOD_ID = 'pm_card_visa'
+
   async function placeTestOrder(token?: string, target = app) {
     return target.inject({
       method: 'POST',
       url: '/orders',
       headers: { authorization: `Bearer ${token ?? userToken(target)}` },
+      payload: { paymentMethodId: PAYMENT_METHOD_ID },
     })
   }
 
@@ -122,8 +125,24 @@ describe('order routes', () => {
             },
           ],
           total: 3000,
+          paymentMethodId: PAYMENT_METHOD_ID,
         },
       })
+    })
+
+    it.each([
+      ['missing', {}],
+      ['empty', { paymentMethodId: '' }],
+    ])('should return 400 when paymentMethodId is %s', async (_, payload) => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/orders',
+        headers: { authorization: `Bearer ${userToken(app)}` },
+        payload,
+      })
+
+      expect(res.statusCode).toBe(400)
+      expect(publishers.events).toHaveLength(0)
     })
 
     it('should return 401 without auth', async () => {

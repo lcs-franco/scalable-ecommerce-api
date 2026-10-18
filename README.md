@@ -82,7 +82,7 @@ This starts Postgres, Redis, Kafka, Mailpit and the seven services, creates the 
 | http://localhost:3000/health | Gateway liveness                       |
 | http://localhost:8025        | Mailpit: emails sent by the platform   |
 
-Shopper journey through the gateway: `POST /api/auth/register` → `POST /api/auth/login` → `GET /api/products` → `POST /api/cart/items` → `POST /api/orders` → the order becomes `paid` once Stripe confirms → `GET /api/payments/order/:orderId`, with welcome, order and payment emails in Mailpit.
+Shopper journey through the gateway: `POST /api/auth/register` → `POST /api/auth/login` → `GET /api/products` → `POST /api/cart/items` → `POST /api/orders` (body `{ "paymentMethodId": "pm_card_visa" }`; `pm_card_chargeDeclined` exercises the failure path) → the order becomes `paid` once Stripe confirms → `GET /api/payments/order/:orderId`, with welcome, order and payment emails in Mailpit.
 
 ### Develop
 

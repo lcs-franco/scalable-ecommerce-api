@@ -33,6 +33,7 @@ export const OrderPlacedSchema = z
       }),
     ),
     total: z.number().int(),
+    paymentMethodId: z.string().min(1),
   })
   .merge(RecipientSchema)
 
