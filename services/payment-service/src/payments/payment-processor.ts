@@ -5,6 +5,7 @@ export type Cents = number
 export interface IProcessPaymentInput {
   amount: Cents
   currency: string
+  paymentMethod: string
   idempotencyKey: `order-${string}`
   metadata: Record<string, string>
 }

@@ -210,7 +210,6 @@ services:
       JWT_SECRET: *jwt-secret
       KAFKA_BROKER: kafka:29092
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:?set STRIPE_SECRET_KEY (sk_test_...) in .env}
-      STRIPE_TEST_PAYMENT_METHOD: ${STRIPE_TEST_PAYMENT_METHOD:-pm_card_visa}
     depends_on:
       postgres: { condition: service_healthy }
       kafka-init: { condition: service_completed_successfully }

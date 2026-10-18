@@ -5,6 +5,7 @@ import { createStripeProcessor } from '../payments/stripe.processor.js'
 const INPUT = {
   amount: 3000,
   currency: 'usd',
+  paymentMethod: 'pm_card_mastercard',
   idempotencyKey: 'order-11111111-1111-1111-1111-111111111111' as const,
   metadata: {
     orderId: '11111111-1111-1111-1111-111111111111',
@@ -20,7 +21,6 @@ describe('createStripeProcessor', () => {
       Stripe,
       'paymentIntents'
     >,
-    paymentMethod: 'pm_card_visa',
     log,
   })
 
@@ -33,7 +33,7 @@ describe('createStripeProcessor', () => {
     expect(processor.name).toBe('stripe')
   })
 
-  it('creates a confirmed intent with the payment method, metadata and idempotency key', async () => {
+  it("creates a confirmed intent with the input's payment method, metadata and idempotency key", async () => {
     create.mockResolvedValue({ id: 'pi_ok', status: 'succeeded' })
 
     await processor.processPayment(INPUT)
@@ -43,7 +43,7 @@ describe('createStripeProcessor', () => {
         amount: 3000,
         currency: 'usd',
         confirm: true,
-        payment_method: 'pm_card_visa',
+        payment_method: 'pm_card_mastercard',
         automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
         metadata: INPUT.metadata,
       },

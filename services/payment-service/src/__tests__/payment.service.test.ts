@@ -59,8 +59,8 @@ describe('paymentService.processOrderPlaced', () => {
     ])
   })
 
-  it('calls the processor with amount, usd, the order idempotency key and metadata', async () => {
-    const event = orderPlacedEvent()
+  it("calls the processor with amount, usd, the event's payment method, the order idempotency key and metadata", async () => {
+    const event = orderPlacedEvent({ paymentMethodId: 'pm_card_mastercard' })
 
     await ctx.app.paymentService.processOrderPlaced(event)
 
@@ -68,6 +68,7 @@ describe('paymentService.processOrderPlaced', () => {
       {
         amount: 3000,
         currency: 'usd',
+        paymentMethod: 'pm_card_mastercard',
         idempotencyKey: `order-${event.orderId}`,
         metadata: { orderId: event.orderId, userId: event.userId },
       },

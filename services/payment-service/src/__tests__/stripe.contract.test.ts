@@ -9,34 +9,34 @@ const key = process.env.STRIPE_SECRET_KEY
 
 describe.skipIf(!key)('stripe processor (contract, test mode)', () => {
   // Built per call: describe bodies run at collection even when skipped
-  function processorWith(paymentMethod: string) {
+  function createProcessor() {
     return createStripeProcessor({
       stripe: new Stripe(key!, { maxNetworkRetries: 2 }),
-      paymentMethod,
       log: { error: () => {} },
     })
   }
 
-  function input() {
+  function input(paymentMethod: string) {
     const orderId = randomUUID()
     return {
       amount: 1234,
       currency: 'usd',
+      paymentMethod,
       idempotencyKey: `order-${orderId}` as const,
       metadata: { orderId },
     }
   }
 
   it('charges pm_card_visa successfully', async () => {
-    const result = await processorWith('pm_card_visa').processPayment(input())
+    const result = await createProcessor().processPayment(input('pm_card_visa'))
 
     expect(result.success).toBe(true)
     expect(result.providerPaymentId).toMatch(/^pi_/)
   })
 
   it('maps pm_card_chargeDeclined to a decline', async () => {
-    const result = await processorWith('pm_card_chargeDeclined').processPayment(
-      input(),
+    const result = await createProcessor().processPayment(
+      input('pm_card_chargeDeclined'),
     )
 
     expect(result.success).toBe(false)
@@ -47,8 +47,8 @@ describe.skipIf(!key)('stripe processor (contract, test mode)', () => {
   })
 
   it('returns the same PaymentIntent for the same idempotency key', async () => {
-    const processor = processorWith('pm_card_visa')
-    const sameInput = input()
+    const processor = createProcessor()
+    const sameInput = input('pm_card_visa')
 
     const first = await processor.processPayment(sameInput)
     const second = await processor.processPayment(sameInput)
