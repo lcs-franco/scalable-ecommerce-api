@@ -38,7 +38,7 @@ describe('order-service on the broker', () => {
     consumer = await createTestConsumer(kafka)
     await setupConsumers({
       consumer,
-      orderService: ctx.orderService,
+      orderService: ctx.app.orderService,
       log: ctx.app.log,
     })
   })

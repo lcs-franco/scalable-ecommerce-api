@@ -343,7 +343,7 @@ describe('order routes', () => {
 
       const ctx = await createTestApp()
       try {
-        await ctx.orderService.markAsPaid(orderId)
+        await ctx.app.orderService.markAsPaid(orderId)
 
         expect(ctx.publishers.events).toHaveLength(1)
         expect(ctx.publishers.events[0]).toEqual({
@@ -376,7 +376,7 @@ describe('order routes', () => {
 
       const ctx = await createTestApp()
       try {
-        await ctx.orderService.markAsPaid(orderId)
+        await ctx.app.orderService.markAsPaid(orderId)
         expect(ctx.publishers.events).toHaveLength(0)
       } finally {
         await ctx.app.close()
@@ -391,7 +391,7 @@ describe('order routes', () => {
       const productClient = mockProductClient()
 
       await withApp({ productClient }, async (ctx) => {
-        await ctx.orderService.markAsCancelled(orderId)
+        await ctx.app.orderService.markAsCancelled(orderId)
 
         expect(productClient.restoreOrderStockCalls).toEqual([
           { orderId, items: ORDER_ITEMS },
@@ -416,8 +416,8 @@ describe('order routes', () => {
       const productClient = mockProductClient()
 
       await withApp({ productClient }, async (ctx) => {
-        await ctx.orderService.markAsCancelled(orderId)
-        await ctx.orderService.markAsCancelled(orderId)
+        await ctx.app.orderService.markAsCancelled(orderId)
+        await ctx.app.orderService.markAsCancelled(orderId)
 
         expect(productClient.restoreOrderStockCalls).toHaveLength(1)
         expect(ctx.publishers.events).toHaveLength(1)
@@ -432,9 +432,9 @@ describe('order routes', () => {
       }
 
       await withApp({ productClient }, async (ctx) => {
-        await expect(ctx.orderService.markAsCancelled(orderId)).rejects.toThrow(
-          'product-service down',
-        )
+        await expect(
+          ctx.app.orderService.markAsCancelled(orderId),
+        ).rejects.toThrow('product-service down')
 
         expect(await orderStatus(orderId)).toBe('pending')
         expect(ctx.publishers.events).toHaveLength(0)
@@ -448,11 +448,11 @@ describe('order routes', () => {
       await withApp({ productClient }, async (ctx) => {
         let paid: Promise<void> | undefined
         productClient.restoreOrderStock = async () => {
-          paid = ctx.orderService.markAsPaid(orderId)
+          paid = ctx.app.orderService.markAsPaid(orderId)
           await new Promise((resolve) => setTimeout(resolve, 100))
         }
 
-        await ctx.orderService.markAsCancelled(orderId)
+        await ctx.app.orderService.markAsCancelled(orderId)
         await paid
 
         expect(await orderStatus(orderId)).toBe('cancelled')
@@ -470,7 +470,7 @@ describe('order routes', () => {
       const productClient = mockProductClient()
 
       await withApp({ productClient }, async (ctx) => {
-        await ctx.orderService.markAsCancelled(orderId)
+        await ctx.app.orderService.markAsCancelled(orderId)
 
         expect(productClient.restoreOrderStockCalls).toHaveLength(0)
         expect(await orderStatus(orderId)).toBe('paid')

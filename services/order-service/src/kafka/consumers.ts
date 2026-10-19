@@ -1,10 +1,10 @@
 import { type createConsumer, Topics } from '@ecommerce/events'
 import type { FastifyBaseLogger } from 'fastify'
-import type { createOrderService } from '../services/order.service.js'
+import type { OrderService } from '../services/order.service.js'
 
 interface IDeps {
   consumer: ReturnType<typeof createConsumer>
-  orderService: ReturnType<typeof createOrderService>
+  orderService: OrderService
   log: FastifyBaseLogger
 }
 
