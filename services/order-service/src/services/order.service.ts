@@ -275,3 +275,5 @@ export function createOrderService(deps: IDeps) {
     markAsCancelled,
   }
 }
+
+export type OrderService = ReturnType<typeof createOrderService>
