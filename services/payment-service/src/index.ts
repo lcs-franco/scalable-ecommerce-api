@@ -27,7 +27,6 @@ async function main() {
 
   const processor = createStripeProcessor({
     stripe: new Stripe(config.STRIPE_SECRET_KEY, { maxNetworkRetries: 2 }),
-    paymentMethod: config.STRIPE_TEST_PAYMENT_METHOD,
     log,
   })
   log.info(`Payment processor: ${processor.name} (test mode)`)

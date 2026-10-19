@@ -59,6 +59,7 @@ describe('order-service on the broker', () => {
       method: 'POST',
       url: '/orders',
       headers: { authorization: `Bearer ${userToken(ctx.app)}` },
+      payload: { paymentMethodId: 'pm_card_visa' },
     })
     return res.json().id
   }
@@ -84,6 +85,7 @@ describe('order-service on the broker', () => {
         expect(placed.events.find((e) => e.orderId === orderId)).toMatchObject({
           ...recipient,
           total: 3000,
+          paymentMethodId: 'pm_card_visa',
         }),
       WAIT,
     )

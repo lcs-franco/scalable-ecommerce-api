@@ -44,6 +44,7 @@ describe('emails', () => {
         },
       ],
       total: 14498,
+      paymentMethodId: 'pm_card_visa',
     })
 
     expect(subject).toBe(`Order ${ORDER_ID.slice(0, 8)} confirmed`)

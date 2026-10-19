@@ -8,14 +8,13 @@ import type {
 
 interface IStripeProcessorOptions {
   stripe: Pick<Stripe, 'paymentIntents'>
-  paymentMethod: string
-  log: Pick<Logger, 'error'>
+  log: Pick<Logger, 'error' | 'warn'>
 }
 
 export function createStripeProcessor(
   opts: IStripeProcessorOptions,
 ): IPaymentProcessor {
-  const { stripe, paymentMethod, log } = opts
+  const { stripe, log } = opts
 
   function createIntent(input: IProcessPaymentInput) {
     return stripe.paymentIntents.create(
@@ -23,7 +22,7 @@ export function createStripeProcessor(
         amount: input.amount,
         currency: input.currency,
         confirm: true,
-        payment_method: paymentMethod,
+        payment_method: input.paymentMethod,
         automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
         metadata: input.metadata,
       },
@@ -53,6 +52,14 @@ export function createStripeProcessor(
           reason: err.message,
           providerPaymentId: err.payment_intent?.id,
         }
+      }
+
+      if (
+        err instanceof Stripe.errors.StripeInvalidRequestError &&
+        err.param === 'payment_method'
+      ) {
+        log.warn(err, 'invalid payment method')
+        return { success: false, reason: 'invalid payment method' }
       }
 
       log.error(err, 'stripe payment failed')

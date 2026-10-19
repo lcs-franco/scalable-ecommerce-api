@@ -88,7 +88,12 @@ export function userToken(app: App, userId = DEFAULT_USER_ID) {
 }
 
 export function orderPlacedEvent(
-  overrides?: Partial<{ orderId: string; userId: string; total: number }>,
+  overrides?: Partial<{
+    orderId: string
+    userId: string
+    total: number
+    paymentMethodId: string
+  }>,
 ) {
   return {
     orderId: overrides?.orderId ?? crypto.randomUUID(),
@@ -103,6 +108,7 @@ export function orderPlacedEvent(
       },
     ],
     total: overrides?.total ?? 3000,
+    paymentMethodId: overrides?.paymentMethodId ?? 'pm_card_visa',
   }
 }
 

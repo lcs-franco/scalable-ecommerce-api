@@ -104,6 +104,7 @@ export function createPaymentService(deps: IDeps) {
     const providerResult = await processor.processPayment({
       amount: payment.amount,
       currency: CURRENCY,
+      paymentMethod: event.paymentMethodId,
       idempotencyKey: `order-${payment.orderId}`,
       metadata: { orderId: payment.orderId, userId: payment.userId },
     })

@@ -12,6 +12,10 @@ export const ListOrdersQuerySchema = z.object({
     .optional(),
 })
 
+export const PlaceOrderBodySchema = z.object({
+  paymentMethodId: z.string().min(1).max(255),
+})
+
 export const UpdateStatusBodySchema = z.object({
   status: z.enum(['pending', 'paid', 'shipped', 'delivered', 'cancelled']),
 })

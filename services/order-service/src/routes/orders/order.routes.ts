@@ -6,6 +6,7 @@ import type { createOrderService } from '../../services/order.service.js'
 import {
   ListOrdersQuerySchema,
   OrderParamsSchema,
+  PlaceOrderBodySchema,
   UpdateStatusBodySchema,
 } from './schemas/order.schemas.js'
 
@@ -21,11 +22,21 @@ export async function orderRoutes(fastify: FastifyInstance, deps: IDeps) {
   const { orderService } = deps
   const app = fastify.withTypeProvider<ZodTypeProvider>()
 
-  app.post('/orders', async (request, reply) => {
-    const token = request.headers.authorization?.replace('Bearer ', '') ?? ''
-    const order = await orderService.placeOrder(request.user, token)
-    return reply.status(201).send(order)
-  })
+  app.post(
+    '/orders',
+    { schema: { body: PlaceOrderBodySchema } },
+    async (request, reply) => {
+      const token = request.headers.authorization?.replace('Bearer ', '') ?? ''
+
+      const order = await orderService.placeOrder(
+        request.user,
+        token,
+        request.body.paymentMethodId,
+      )
+
+      return reply.status(201).send(order)
+    },
+  )
 
   app.get(
     '/orders',

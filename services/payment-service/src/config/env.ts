@@ -9,7 +9,6 @@ const envSchema = z.object({
   STRIPE_SECRET_KEY: z
     .string()
     .startsWith('sk_test_', 'STRIPE_SECRET_KEY must be a test-mode key'),
-  STRIPE_TEST_PAYMENT_METHOD: z.string().default('pm_card_visa'),
 })
 
 export const config = envSchema.parse(process.env)

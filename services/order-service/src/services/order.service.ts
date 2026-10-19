@@ -63,6 +63,7 @@ export function createOrderService(deps: IDeps) {
   async function placeOrder(
     user: Pick<ITokenPayload, 'userId' | 'email'>,
     userToken: string,
+    paymentMethodId: string,
   ) {
     const { userId, email } = user
     const s = createSaga()
@@ -107,6 +108,7 @@ export function createOrderService(deps: IDeps) {
           email,
           items: validatedItems,
           total,
+          paymentMethodId,
         })
       } catch {
         // Fire-and-forget — don't fail the request
