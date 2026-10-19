@@ -34,7 +34,7 @@ async function main() {
     internalServiceToken: config.INTERNAL_SERVICE_TOKEN,
   })
 
-  const { app, orderService } = await buildApp({
+  const app = await buildApp({
     db,
     cartClient,
     productClient,
@@ -44,7 +44,7 @@ async function main() {
 
   await setupConsumers({
     consumer,
-    orderService,
+    orderService: app.orderService,
     log: app.log,
   })
 

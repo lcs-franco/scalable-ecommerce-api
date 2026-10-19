@@ -69,7 +69,7 @@ export async function createTestApp(overrides?: {
   const publishers = mockPublishers()
   const publish = overrides?.publishers ?? publishers
 
-  const { app, orderService } = await buildApp({
+  const app = await buildApp({
     db,
     cartClient: overrides?.cartClient ?? mockCartClient(),
     productClient: overrides?.productClient ?? mockProductClient(),
@@ -79,7 +79,7 @@ export async function createTestApp(overrides?: {
   })
   await app.ready()
 
-  return { app, db, pool, orderService, publishers }
+  return { app, db, pool, publishers }
 }
 
 const ADMIN_ID = '00000000-0000-0000-0000-000000000001'

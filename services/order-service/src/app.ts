@@ -15,7 +15,17 @@ import type { Db } from './db/index.js'
 import { runMigrations } from './db/migrate.js'
 import { ApplicationError, ErrorCode } from './errors/index.js'
 import { orderRoutes } from './routes/orders/order.routes.js'
-import { createOrderService } from './services/order.service.js'
+import {
+  createOrderService,
+  type OrderService,
+} from './services/order.service.js'
+
+declare module 'fastify' {
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  interface FastifyInstance {
+    orderService: OrderService
+  }
+}
 
 interface IBuildAppOptions {
   db: Db
@@ -89,18 +99,19 @@ export async function buildApp(opts: IBuildAppOptions) {
     async () => ({ status: 'ok' }),
   )
 
-  const orderService = createOrderService({
-    db,
-    cartClient,
-    productClient,
-    publishOrderPlaced,
-    publishOrderStatusChanged,
-    createSaga,
-  })
+  app.decorate(
+    'orderService',
+    createOrderService({
+      db,
+      cartClient,
+      productClient,
+      publishOrderPlaced,
+      publishOrderStatusChanged,
+      createSaga,
+    }),
+  )
 
-  await app.register(async (instance) => {
-    await orderRoutes(instance, { orderService })
-  })
+  await app.register(orderRoutes)
 
-  return { app, orderService }
+  return app
 }
