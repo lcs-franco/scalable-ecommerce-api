@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { createServer, type AddressInfo } from 'node:net'
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 import { DEDUPE_KEY_PREFIX } from '../dedupe.js'
 import { createRedis } from '../redis.js'
@@ -67,5 +68,34 @@ describe('createDeduper against Redis', () => {
     )
 
     down.disconnect()
+  })
+
+  it('fails open on the command timeout when Redis never replies', async () => {
+    // Accepts connections and never replies, so the ready check and commands hang.
+    const server = createServer(() => {})
+
+    await new Promise<void>((resolve) => server.listen(0, resolve))
+
+    const { port } = server.address() as AddressInfo
+    const hung = createRedis(`redis://localhost:${port}`)
+
+    hung.on('error', () => {})
+
+    const log = fakeLogger()
+    const deduper = testDeduper(hung, log)
+    const eventId = randomUUID()
+
+    const startedAt = Date.now()
+    const claimed = await deduper.claim(eventId)
+
+    expect(claimed).toBe(true)
+    expect(Date.now() - startedAt).toBeLessThan(1500)
+    expect(log.error).toHaveBeenCalledWith(
+      expect.objectContaining({ eventId }),
+      expect.any(String),
+    )
+
+    hung.disconnect()
+    server.close()
   })
 })
