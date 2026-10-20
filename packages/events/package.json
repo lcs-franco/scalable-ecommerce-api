@@ -14,6 +14,11 @@
     "./testing": {
       "import": "./dist/testing.js",
       "types": "./dist/testing.d.ts"
+    },
+    "./outbox": {
+      "types": "./dist/outbox.d.ts",
+      "import": "./dist/outbox.js",
+      "default": "./dist/outbox.js"
     }
   },
   "scripts": {
@@ -26,6 +31,17 @@
     "zod": "^3.24.0"
   },
   "devDependencies": {
+    "@types/pg": "^8.11.10",
+    "drizzle-orm": "^0.38.0",
+    "pg": "^8.13.1",
     "vitest": "^2.1.9"
+  },
+  "peerDependencies": {
+    "drizzle-orm": "^0.38.0"
+  },
+  "peerDependenciesMeta": {
+    "drizzle-orm": {
+      "optional": true
+    }
   }
 }

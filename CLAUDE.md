@@ -52,7 +52,7 @@ docker compose run --rm product-seed
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@ecommerce/auth`   | Fastify plugin wrapping `@fastify/jwt`. Routes opt out via `{ config: { skipAuth: true } }`; path prefixes via `publicPrefixes`. `{ config: { internal: true } }` routes require `x-internal-token` (plugin option `internalToken`) instead of JWT |
 | `@ecommerce/docs`   | `docsPlugin`: OpenAPI (Swagger + Scalar) at `DOCS_PREFIX` (`/docs`) from Zod route schemas; `schema: { hide: true }` or `config: { internal: true }` hides a route                                                                                 |
-| `@ecommerce/events` | Kafka topic constants, Zod event schemas, `createProducer`/`createConsumer` factories; test helpers under `@ecommerce/events/testing`                                                                                                              |
+| `@ecommerce/events` | Kafka topic constants, Zod event schemas, `createProducer`/`createConsumer` factories; transactional outbox (`outbox` table, `enqueue`, `createOutboxRelay`) under `@ecommerce/events/outbox`; test helpers under `@ecommerce/events/testing`      |
 | `@ecommerce/logger` | Pino logger factory with per-service configuration                                                                                                                                                                                                 |
 
 Packages must be built (`pnpm build`) before services can import them.
@@ -75,7 +75,7 @@ Packages must be built (`pnpm build`) before services can import them.
 
 **Synchronous (HTTP):** Service-to-service calls use `x-internal-token` header (shared secret from `INTERNAL_SERVICE_TOKEN` env var), not JWT. The receiving route declares `config: { internal: true }` and `authPlugin` checks the token. Client factories live in each service (e.g., `createProductClient`, `createCartClient`).
 
-**Asynchronous (Kafka):** Events use Zod-validated schemas from `@ecommerce/events`. Topics: `user.registered`, `order.placed`, `order.status-changed`, `payment.confirmed`, `payment.failed`. Poison messages (bad JSON/schema) are logged and skipped, not retried.
+**Asynchronous (Kafka):** Events use Zod-validated schemas from `@ecommerce/events`. Topics: `user.registered`, `order.placed`, `order.status-changed`, `payment.confirmed`, `payment.failed`. Poison messages (bad JSON/schema) are logged and skipped, not retried. Services never publish from a request: they `enqueue(tx, topic, data, { key })` into their own `outbox` table in the same transaction as the state change, and a relay in the service process publishes it (at-least-once, message key = entity id, header `event-id` = outbox row id). An adopting service re-exports `outbox` from its `db/schema.ts` so `db:generate` migrates it.
 
 ### Key Patterns
 
@@ -97,8 +97,8 @@ Single Postgres container hosts 4 logical databases (`init-databases.sh` creates
 
 - **Framework:** Vitest with 30s timeout, serial file execution
 - **Location:** `services/*/src/__tests__/*.test.ts`
-- **Pattern:** `createTestApp()` helper builds Fastify instance with real Postgres/Redis and mock Kafka publishers. `cleanDb()` resets tables between tests.
-- **Kafka tests:** `kafka.test.ts` (and notification's `consumers.test.ts`) run `createPublishers` / `setupConsumers` against the real broker with `@ecommerce/events/testing` (`createTestConsumer`, `collectEvents`). Topics are shared, so filter received events by an id the test owns. Run them against the infra-only command above, not `pnpm dev`: the running services' consumer groups would also consume test messages.
+- **Pattern:** `createTestApp()` helper builds Fastify instance with real Postgres/Redis. Events are asserted as rows in the service's `outbox` table (`outboxEvents()`). `cleanDb()` resets tables (including `outbox`) between tests.
+- **Kafka tests:** `kafka.test.ts` (and notification's `consumers.test.ts`) run the outbox relay / `setupConsumers` against the real broker with `@ecommerce/events/testing` (`createTestConsumer`, `collectEvents`). Topics are shared, so filter received events by an id the test owns. Run them against the infra-only command above, not `pnpm dev`: the running services' consumer groups would also consume test messages.
 - **CI:** GitHub Actions runs typecheck → build → test. Postgres and Redis run as service containers; Kafka starts from `docker-compose.yml` (`kafka` + `kafka-init`).
 
 ## Environment Setup

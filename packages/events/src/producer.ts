@@ -10,12 +10,13 @@ export function createProducer(kafka: Kafka) {
   const publish = async <Topic extends TopicName>(
     topic: Topic,
     payload: EventData<Topic>,
+    options: { key?: string; headers?: Record<string, string> } = {},
   ) => {
     const parsed = EventSchemas[topic].parse(payload)
 
     await producer.send({
       topic,
-      messages: [{ value: JSON.stringify(parsed) }],
+      messages: [{ ...options, value: JSON.stringify(parsed) }],
     })
   }
 

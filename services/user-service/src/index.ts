@@ -1,9 +1,9 @@
 import { createProducer } from '@ecommerce/events'
+import { createOutboxRelay } from '@ecommerce/events/outbox'
 import { Kafka } from 'kafkajs'
 import { buildApp } from './app.js'
 import { config } from './config.js'
 import { createDb } from './db/index.js'
-import { createPublishers } from './kafka/publishers.js'
 
 async function main() {
   const { db, pool } = createDb(config.DATABASE_URL)
@@ -15,13 +15,13 @@ async function main() {
   const producer = createProducer(kafka)
   await producer.connect()
 
-  const app = await buildApp({
-    db,
-    ...createPublishers(producer),
-  })
+  const app = await buildApp({ db })
+
+  const relay = createOutboxRelay({ db, producer, log: app.log })
 
   const shutdown = async () => {
     await app.close()
+    await relay.stop()
     await producer.disconnect()
     await pool.end()
   }
@@ -29,6 +29,7 @@ async function main() {
   process.on('SIGINT', shutdown)
 
   await app.listen({ port: config.PORT, host: '0.0.0.0' })
+  relay.start()
 }
 
 main().catch((err) => {

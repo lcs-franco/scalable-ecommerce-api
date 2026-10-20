@@ -17,11 +17,6 @@ import { createUserService } from './services/user.service.js'
 
 interface IBuildAppOptions {
   db: Db
-  publishUserRegistered: (data: {
-    userId: string
-    email: string
-    name: string
-  }) => Promise<void>
 }
 
 export async function buildApp(opts: IBuildAppOptions) {
@@ -78,11 +73,7 @@ export async function buildApp(opts: IBuildAppOptions) {
   const authService = createAuthService(opts.db, app, userService)
 
   await app.register(async (instance) => {
-    await authRoutes(instance, {
-      authService,
-      userService,
-      publishUserRegistered: opts.publishUserRegistered,
-    })
+    await authRoutes(instance, { authService, userService })
     await profileRoutes(instance, { userService })
   })
 

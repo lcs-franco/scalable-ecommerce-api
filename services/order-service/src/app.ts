@@ -1,6 +1,5 @@
 import { authPlugin } from '@ecommerce/auth'
 import { DOCS_PREFIX, docsPlugin } from '@ecommerce/docs'
-import type { EventData, Topics } from '@ecommerce/events'
 import { getLoggerConfig } from '@ecommerce/logger'
 import Fastify, { FastifyError } from 'fastify'
 import {
@@ -31,24 +30,11 @@ interface IBuildAppOptions {
   db: Db
   cartClient: ReturnType<typeof createCartClient>
   productClient: ReturnType<typeof createProductClient>
-  publishOrderPlaced: (
-    data: EventData<typeof Topics.ORDER_PLACED>,
-  ) => Promise<void>
-  publishOrderStatusChanged: (
-    data: EventData<typeof Topics.ORDER_STATUS_CHANGED>,
-  ) => Promise<void>
   createSaga: typeof saga
 }
 
 export async function buildApp(opts: IBuildAppOptions) {
-  const {
-    cartClient,
-    db,
-    productClient,
-    publishOrderPlaced,
-    publishOrderStatusChanged,
-    createSaga,
-  } = opts
+  const { cartClient, db, productClient, createSaga } = opts
 
   const app = Fastify({
     logger: getLoggerConfig({ service: 'order-service', level: 'warn' }),
@@ -101,14 +87,7 @@ export async function buildApp(opts: IBuildAppOptions) {
 
   app.decorate(
     'orderService',
-    createOrderService({
-      db,
-      cartClient,
-      productClient,
-      publishOrderPlaced,
-      publishOrderStatusChanged,
-      createSaga,
-    }),
+    createOrderService({ db, cartClient, productClient, createSaga }),
   )
 
   await app.register(orderRoutes)

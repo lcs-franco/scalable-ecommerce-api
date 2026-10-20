@@ -15,6 +15,13 @@
       "when": 1791918830528,
       "tag": "0001_dizzy_lightspeed",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792508232541,
+      "tag": "0002_brave_mad_thinker",
+      "breakpoints": true
     }
   ]
 }

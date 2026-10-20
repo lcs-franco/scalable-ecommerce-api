@@ -1,4 +1,6 @@
 import bcrypt from 'bcrypt'
+import { Topics } from '@ecommerce/events'
+import { enqueue } from '@ecommerce/events/outbox'
 import { eq } from 'drizzle-orm'
 import type { Db } from '../db/index.js'
 import { users } from '../db/schema.js'
@@ -27,11 +29,22 @@ export function createUserService(db: Db) {
     if (existing) throw new EmailAlreadyInUse()
 
     const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS)
-    const rows = await db
-      .insert(users)
-      .values({ email, passwordHash, name })
-      .returning()
-    return rows[0]
+
+    return db.transaction(async (tx) => {
+      const [user] = await tx
+        .insert(users)
+        .values({ email, passwordHash, name })
+        .returning()
+
+      await enqueue(
+        tx,
+        Topics.USER_REGISTERED,
+        { userId: user.id, email: user.email, name: user.name },
+        { key: user.id },
+      )
+
+      return user
+    })
   }
 
   async function updateProfile(

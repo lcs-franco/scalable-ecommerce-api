@@ -40,3 +40,5 @@ export const orderItems = pgTable('order_items', {
   price: integer('price').notNull(),
   quantity: integer('quantity').notNull(),
 })
+
+export { outbox } from '@ecommerce/events/outbox'

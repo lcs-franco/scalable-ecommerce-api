@@ -1,4 +1,5 @@
 import { createProducer, Topics } from '@ecommerce/events'
+import { createOutboxRelay } from '@ecommerce/events/outbox'
 import { collectEvents, testKafka } from '@ecommerce/events/testing'
 import {
   afterAll,
@@ -9,17 +10,24 @@ import {
   it,
   vi,
 } from 'vitest'
-import { createPublishers } from '../kafka/publishers.js'
 import { cleanDb, createTestApp } from './helpers.js'
 
 describe('user-service on the broker', () => {
   const kafka = testKafka()
   const producer = createProducer(kafka)
   let ctx: Awaited<ReturnType<typeof createTestApp>>
+  let relay: ReturnType<typeof createOutboxRelay>
 
   beforeAll(async () => {
     await producer.connect()
-    ctx = await createTestApp({ publishers: createPublishers(producer) })
+    ctx = await createTestApp()
+    relay = createOutboxRelay({
+      db: ctx.db,
+      producer,
+      log: ctx.app.log,
+      intervalMs: 100,
+    })
+    relay.start()
   })
 
   afterEach(async () => {
@@ -27,6 +35,7 @@ describe('user-service on the broker', () => {
   })
 
   afterAll(async () => {
+    await relay.stop()
     await producer.disconnect()
     await ctx.app.close()
     await ctx.pool.end()

@@ -1,3 +1,4 @@
+import { Topics } from '@ecommerce/events'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { CartEmpty, InsufficientStock } from '../errors/index.js'
 import {
@@ -8,6 +9,7 @@ import {
   DEFAULT_USER_ID,
   mockCartClient,
   mockProductClient,
+  outboxEvents,
   PRODUCT_1,
   PRODUCT_2,
   userToken,
@@ -17,19 +19,16 @@ describe('order routes', () => {
   let app: Awaited<ReturnType<typeof createTestApp>>['app']
   let db: Awaited<ReturnType<typeof createTestApp>>['db']
   let pool: Awaited<ReturnType<typeof createTestApp>>['pool']
-  let publishers: Awaited<ReturnType<typeof createTestApp>>['publishers']
 
   beforeAll(async () => {
     const ctx = await createTestApp()
     app = ctx.app
     db = ctx.db
     pool = ctx.pool
-    publishers = ctx.publishers
   })
 
   afterEach(async () => {
     await cleanDb(db)
-    publishers.events.length = 0
   })
 
   afterAll(async () => {
@@ -53,6 +52,10 @@ describe('order routes', () => {
       headers: { authorization: `Bearer ${adminToken(app)}` },
     })
     return res.json().status
+  }
+
+  function statusChanges(target = db) {
+    return outboxEvents(target, Topics.ORDER_STATUS_CHANGED)
   }
 
   const PAYMENT_METHOD_ID = 'pm_card_visa'
@@ -100,34 +103,50 @@ describe('order routes', () => {
       )
     })
 
-    it('should publish order.placed event with recipient and item names', async () => {
+    it('should enqueue order.placed keyed by order with recipient and item names', async () => {
       const res = await placeTestOrder()
 
-      expect(publishers.events).toHaveLength(1)
-      expect(publishers.events[0]).toEqual({
-        topic: 'order.placed',
-        data: {
-          orderId: res.json().id,
-          userId: DEFAULT_USER_ID,
-          email: DEFAULT_USER_EMAIL,
-          items: [
-            {
-              productId: PRODUCT_1,
-              name: `Product ${PRODUCT_1}`,
-              quantity: 2,
-              price: 1000,
-            },
-            {
-              productId: PRODUCT_2,
-              name: `Product ${PRODUCT_2}`,
-              quantity: 1,
-              price: 1000,
-            },
-          ],
-          total: 3000,
-          paymentMethodId: PAYMENT_METHOD_ID,
+      expect(await outboxEvents(db)).toEqual([
+        {
+          topic: 'order.placed',
+          key: res.json().id,
+          data: {
+            orderId: res.json().id,
+            userId: DEFAULT_USER_ID,
+            email: DEFAULT_USER_EMAIL,
+            items: [
+              {
+                productId: PRODUCT_1,
+                name: `Product ${PRODUCT_1}`,
+                quantity: 2,
+                price: 1000,
+              },
+              {
+                productId: PRODUCT_2,
+                name: `Product ${PRODUCT_2}`,
+                quantity: 1,
+                price: 1000,
+              },
+            ],
+            total: 3000,
+            paymentMethodId: PAYMENT_METHOD_ID,
+          },
         },
+      ])
+    })
+
+    it('should store neither the order nor the event when the event is rejected', async () => {
+      const token = app.jwt.sign({
+        userId: DEFAULT_USER_ID,
+        email: 'not-an-email',
+        role: 'user',
       })
+
+      const res = await placeTestOrder(token)
+
+      expect(res.statusCode).toBe(400)
+      expect(await listAllOrders(app)).toEqual([])
+      expect(await outboxEvents(db)).toEqual([])
     })
 
     it.each([
@@ -142,7 +161,7 @@ describe('order routes', () => {
       })
 
       expect(res.statusCode).toBe(400)
-      expect(publishers.events).toHaveLength(0)
+      expect(await outboxEvents(db)).toEqual([])
     })
 
     it('should return 401 without auth', async () => {
@@ -177,7 +196,7 @@ describe('order routes', () => {
           message: 'Cart is empty',
         })
         expect(await listAllOrders(ctx.app)).toEqual([])
-        expect(ctx.publishers.events).toEqual([])
+        expect(await outboxEvents(ctx.db)).toEqual([])
       })
     })
 
@@ -204,7 +223,7 @@ describe('order routes', () => {
         })
         expect(cartRestored).toBe(true)
         expect(await listAllOrders(ctx.app)).toEqual([])
-        expect(ctx.publishers.events).toEqual([])
+        expect(await outboxEvents(ctx.db)).toEqual([])
       })
     })
 
@@ -336,32 +355,33 @@ describe('order routes', () => {
   })
 
   describe('markAsPaid', () => {
-    it('should publish order.status-changed event', async () => {
+    it('should enqueue order.status-changed event', async () => {
       const createRes = await placeTestOrder()
       const orderId = createRes.json().id
-      publishers.events.length = 0
 
       const ctx = await createTestApp()
       try {
         await ctx.app.orderService.markAsPaid(orderId)
 
-        expect(ctx.publishers.events).toHaveLength(1)
-        expect(ctx.publishers.events[0]).toEqual({
-          topic: 'order.status-changed',
-          data: {
-            orderId,
-            userId: DEFAULT_USER_ID,
-            email: DEFAULT_USER_EMAIL,
-            status: 'paid',
+        expect(await statusChanges(ctx.db)).toEqual([
+          {
+            topic: 'order.status-changed',
+            key: orderId,
+            data: {
+              orderId,
+              userId: DEFAULT_USER_ID,
+              email: DEFAULT_USER_EMAIL,
+              status: 'paid',
+            },
           },
-        })
+        ])
       } finally {
         await ctx.app.close()
         await ctx.pool.end()
       }
     })
 
-    it('should not publish event when order is not pending', async () => {
+    it('should not enqueue an event when order is not pending', async () => {
       const createRes = await placeTestOrder()
       const orderId = createRes.json().id
 
@@ -372,12 +392,13 @@ describe('order routes', () => {
         headers: { authorization: `Bearer ${adminToken(app)}` },
         payload: { status: 'paid' },
       })
-      publishers.events.length = 0
+
+      const before = await statusChanges()
 
       const ctx = await createTestApp()
       try {
         await ctx.app.orderService.markAsPaid(orderId)
-        expect(ctx.publishers.events).toHaveLength(0)
+        expect(await statusChanges(ctx.db)).toEqual(before)
       } finally {
         await ctx.app.close()
         await ctx.pool.end()
@@ -386,7 +407,7 @@ describe('order routes', () => {
   })
 
   describe('markAsCancelled', () => {
-    it('should restore stock, cancel and publish order.status-changed', async () => {
+    it('should restore stock, cancel and enqueue order.status-changed', async () => {
       const orderId = (await placeTestOrder()).json().id
       const productClient = mockProductClient()
 
@@ -397,9 +418,10 @@ describe('order routes', () => {
           { orderId, items: ORDER_ITEMS },
         ])
         expect(await orderStatus(orderId)).toBe('cancelled')
-        expect(ctx.publishers.events).toEqual([
+        expect(await statusChanges(ctx.db)).toEqual([
           {
             topic: 'order.status-changed',
+            key: orderId,
             data: {
               orderId,
               userId: DEFAULT_USER_ID,
@@ -420,7 +442,7 @@ describe('order routes', () => {
         await ctx.app.orderService.markAsCancelled(orderId)
 
         expect(productClient.restoreOrderStockCalls).toHaveLength(1)
-        expect(ctx.publishers.events).toHaveLength(1)
+        expect(await statusChanges(ctx.db)).toHaveLength(1)
       })
     })
 
@@ -437,7 +459,7 @@ describe('order routes', () => {
         ).rejects.toThrow('product-service down')
 
         expect(await orderStatus(orderId)).toBe('pending')
-        expect(ctx.publishers.events).toHaveLength(0)
+        expect(await statusChanges(ctx.db)).toHaveLength(0)
       })
     })
 
@@ -456,7 +478,7 @@ describe('order routes', () => {
         await paid
 
         expect(await orderStatus(orderId)).toBe('cancelled')
-        expect(ctx.publishers.events).toEqual([
+        expect(await statusChanges(ctx.db)).toEqual([
           expect.objectContaining({
             data: expect.objectContaining({ status: 'cancelled' }),
           }),
@@ -467,6 +489,7 @@ describe('order routes', () => {
     it('should do nothing when order is not pending', async () => {
       const orderId = (await placeTestOrder()).json().id
       await setStatus(orderId, 'paid')
+      const before = await statusChanges()
       const productClient = mockProductClient()
 
       await withApp({ productClient }, async (ctx) => {
@@ -474,7 +497,7 @@ describe('order routes', () => {
 
         expect(productClient.restoreOrderStockCalls).toHaveLength(0)
         expect(await orderStatus(orderId)).toBe('paid')
-        expect(ctx.publishers.events).toHaveLength(0)
+        expect(await statusChanges(ctx.db)).toEqual(before)
       })
     })
   })
@@ -523,13 +546,12 @@ describe('order routes', () => {
 
       await withApp({ productClient }, async (ctx) => {
         const orderId = (await placeTestOrder(undefined, ctx.app)).json().id
-        ctx.publishers.events.length = 0
 
         const res = await setStatus(orderId, 'cancelled', ctx.app)
 
         expect(res.statusCode).toBe(500)
         expect(await orderStatus(orderId)).toBe('pending')
-        expect(ctx.publishers.events).toHaveLength(0)
+        expect(await statusChanges(ctx.db)).toHaveLength(0)
       })
     })
   })
@@ -550,10 +572,9 @@ describe('order routes', () => {
       expect(res.json().status).toBe('paid')
     })
 
-    it('should publish order.status-changed event', async () => {
+    it('should enqueue order.status-changed event', async () => {
       const createRes = await placeTestOrder()
       const orderId = createRes.json().id
-      publishers.events.length = 0
 
       await app.inject({
         method: 'PATCH',
@@ -563,16 +584,18 @@ describe('order routes', () => {
       })
 
       // Recipient is the order's customer, not the admin who changed it
-      expect(publishers.events).toHaveLength(1)
-      expect(publishers.events[0]).toEqual({
-        topic: 'order.status-changed',
-        data: {
-          orderId,
-          userId: DEFAULT_USER_ID,
-          email: DEFAULT_USER_EMAIL,
-          status: 'paid',
+      expect(await statusChanges()).toEqual([
+        {
+          topic: 'order.status-changed',
+          key: orderId,
+          data: {
+            orderId,
+            userId: DEFAULT_USER_ID,
+            email: DEFAULT_USER_EMAIL,
+            status: 'paid',
+          },
         },
-      })
+      ])
     })
 
     it('should reject invalid status transition', async () => {
