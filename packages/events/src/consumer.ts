@@ -24,10 +24,10 @@ export function createConsumer(
 
   const subscribe = async <Topic extends TopicName>(
     topic: Topic,
-    handler: (data: EventData<Topic>, meta: IEventMeta) => Promise<void>,
+    handler: Handler<Topic>,
   ) => {
     await consumer.subscribe({ topic })
-    handlers.set(topic, handler)
+    handlers.set(topic, handler as Handler)
   }
 
   const start = async () => {
