@@ -4,8 +4,10 @@ import { createLogger } from '@ecommerce/logger'
 import { Kafka } from 'kafkajs'
 import { buildApp } from './app.js'
 import { config } from './config/env.js'
+import { createDeduper } from './dedupe.js'
 import { setupConsumers } from './kafka/consumers.js'
 import { createSmtpEmailProvider } from './providers/smtp-email.provider.js'
+import { createRedis } from './redis.js'
 import { createNotificationService } from './services/notification.service.js'
 
 async function main() {
@@ -25,16 +27,25 @@ async function main() {
   const consumer = createConsumer(kafka, 'notification-service')
   await consumer.connect()
 
+  const redis = createRedis(config.REDIS_URL)
+  await redis.ping()
+
   const app = await buildApp()
 
   await setupConsumers({
     consumer,
     notificationService: createNotificationService({ email, log }),
+    deduper: createDeduper({
+      redis,
+      ttlSeconds: config.DEDUPE_TTL_SECONDS,
+      log,
+    }),
   })
 
   const shutdown = async () => {
     await app.close()
     await consumer.disconnect()
+    await redis.quit()
   }
   process.on('SIGTERM', shutdown)
   process.on('SIGINT', shutdown)

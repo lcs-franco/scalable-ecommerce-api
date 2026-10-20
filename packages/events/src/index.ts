@@ -1,4 +1,5 @@
-export { createConsumer } from './consumer.js'
+export { createConsumer, type IEventMeta } from './consumer.js'
+export { EVENT_ID_HEADER } from './headers.js'
 export { createProducer } from './producer.js'
 export {
   EventSchemas,

@@ -67,7 +67,7 @@ Packages must be built (`pnpm build`) before services can import them.
 | order-service        | 3004 | PostgreSQL (order_db)   | Implemented |
 | api-gateway          | 3000 | Redis (rate limits)     | Implemented |
 | payment-service      | 3005 | PostgreSQL (payment_db) | Implemented |
-| notification-service | 3006 | —                       | Implemented |
+| notification-service | 3006 | Redis (event dedupe)    | Implemented |
 
 ### Communication Patterns
 

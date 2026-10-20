@@ -1,8 +1,14 @@
 import type { ConsumerConfig, Kafka } from 'kafkajs'
+import { EVENT_ID_HEADER } from './headers.js'
 import { type EventData, EventSchemas, type TopicName } from './schemas.js'
+
+export interface IEventMeta {
+  eventId?: string
+}
 
 type Handler<T extends TopicName = TopicName> = (
   data: EventData<T>,
+  meta: IEventMeta,
 ) => Promise<void>
 
 export function createConsumer(
@@ -18,10 +24,10 @@ export function createConsumer(
 
   const subscribe = async <Topic extends TopicName>(
     topic: Topic,
-    handler: (data: EventData<Topic>) => Promise<void>,
+    handler: Handler<Topic>,
   ) => {
     await consumer.subscribe({ topic })
-    handlers.set(topic, handler)
+    handlers.set(topic, handler as Handler)
   }
 
   const start = async () => {
@@ -47,7 +53,9 @@ export function createConsumer(
           return
         }
 
-        await handler(validated)
+        const eventId = message.headers?.[EVENT_ID_HEADER]?.toString()
+
+        await handler(validated, { eventId })
       },
     })
   }

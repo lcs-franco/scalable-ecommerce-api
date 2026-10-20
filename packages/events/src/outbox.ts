@@ -9,6 +9,7 @@ import {
   type PgDatabase,
   type PgQueryResultHKT,
 } from 'drizzle-orm/pg-core'
+import { EVENT_ID_HEADER } from './headers.js'
 import type { createProducer } from './producer.js'
 import { EventSchemas, type EventData, type TopicName } from './schemas.js'
 
@@ -124,7 +125,10 @@ export function createOutboxRelay(options: IOutboxRelayOptions) {
           await producer.publish(
             row.topic as TopicName,
             row.payload as EventData<TopicName>,
-            { key: row.key ?? undefined, headers: { 'event-id': row.id } },
+            {
+              key: row.key ?? undefined,
+              headers: { [EVENT_ID_HEADER]: row.id },
+            },
           )
         } catch (err) {
           // Stop here so later events never overtake this one
