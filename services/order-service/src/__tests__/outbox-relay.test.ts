@@ -2,6 +2,8 @@ import { Topics } from '@ecommerce/events'
 import {
   createOutboxRelay,
   enqueue,
+  outbox,
+  type OutboxDb,
   type OutboxProducer,
 } from '@ecommerce/events/outbox'
 import { afterAll, afterEach, describe, expect, it } from 'vitest'
@@ -40,7 +42,9 @@ function fakeProducer(beforePublish?: (call: Published) => Promise<void>) {
   return { producer, published }
 }
 
-const silentLog = { error: () => {} }
+const silentLog = { info: () => {}, error: () => {} }
+
+const DAY_MS = 24 * 60 * 60 * 1000
 
 describe('outbox relay', () => {
   const { db, pool } = createDb(TEST_DATABASE_URL)
@@ -60,6 +64,36 @@ describe('outbox relay', () => {
       { orderId, userId: DEFAULT_USER_ID, email: DEFAULT_USER_EMAIL, status },
       { key: orderId },
     )
+  }
+
+  async function insertRow(createdAt: Date, publishedAt: Date | null) {
+    const [row] = await db
+      .insert(outbox)
+      .values({
+        topic: Topics.ORDER_STATUS_CHANGED,
+        payload: {},
+        createdAt,
+        publishedAt,
+      })
+      .returning({ id: outbox.id })
+
+    return row.id
+  }
+
+  function insertPublished(daysAgo: number) {
+    const at = new Date(Date.now() - daysAgo * DAY_MS)
+
+    return insertRow(at, at)
+  }
+
+  function insertPending(daysAgo: number) {
+    return insertRow(new Date(Date.now() - daysAgo * DAY_MS), null)
+  }
+
+  async function remainingIds() {
+    const rows = await db.select({ id: outbox.id }).from(outbox)
+
+    return rows.map((r) => r.id)
   }
 
   it('publishes pending events in order with their key and event id', async () => {
@@ -101,7 +135,7 @@ describe('outbox relay', () => {
     const relay = createOutboxRelay({
       db,
       producer,
-      log: { error: (obj) => errors.push(obj) },
+      log: { ...silentLog, error: (obj) => errors.push(obj) },
     })
 
     await relay.publishPending()
@@ -187,5 +221,68 @@ describe('outbox relay', () => {
     }).publishPending()
 
     expect(next.published).toEqual([])
+  })
+
+  it('purges only rows published before the retention window', async () => {
+    const expired = await insertPublished(8)
+    const recent = await insertPublished(1)
+    const stuck = await insertPending(30)
+    const { producer } = fakeProducer()
+    const infos: object[] = []
+    const relay = createOutboxRelay({
+      db,
+      producer,
+      log: { ...silentLog, info: (obj) => infos.push(obj) },
+    })
+
+    await relay.purgePublished()
+
+    const remaining = await remainingIds()
+
+    expect(remaining).not.toContain(expired)
+    expect(remaining.sort()).toEqual([recent, stuck].sort())
+    expect(infos).toEqual([{ deleted: 1 }])
+  })
+
+  it('drains a backlog larger than the batch size in one purge', async () => {
+    for (let i = 0; i < 5; i++) await insertPublished(8)
+    const { producer } = fakeProducer()
+    const relay = createOutboxRelay({
+      db,
+      producer,
+      log: silentLog,
+      purgeBatchSize: 2,
+    })
+
+    await relay.purgePublished()
+
+    expect(await remainingIds()).toEqual([])
+  })
+
+  it('finishes the running purge on stop', async () => {
+    await insertPublished(8)
+    let signalStarted: () => void = () => {}
+    const started = new Promise<void>((r) => (signalStarted = r))
+    const slowDb: OutboxDb = Object.create(db)
+    slowDb.transaction = async (...args) => {
+      signalStarted()
+      await new Promise((r) => setTimeout(r, 50))
+
+      return db.transaction(...args)
+    }
+    const { producer } = fakeProducer()
+    const relay = createOutboxRelay({
+      db: slowDb,
+      producer,
+      log: silentLog,
+      intervalMs: 60_000,
+      purgeIntervalMs: 10,
+    })
+
+    relay.start()
+    await started
+    await relay.stop()
+
+    expect(await remainingIds()).toEqual([])
   })
 })
