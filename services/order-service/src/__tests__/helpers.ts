@@ -1,12 +1,13 @@
-import { sql } from 'drizzle-orm'
+import type { TopicName } from '@ecommerce/events'
+import { asc, eq, sql } from 'drizzle-orm'
 import { buildApp } from '../app.js'
 import { saga } from '../config/saga.js'
 import { createDb } from '../db/index.js'
-import type { createPublishers } from '../kafka/publishers.js'
+import { outbox } from '../db/schema.js'
 
 process.env.JWT_SECRET ??= 'test-secret-must-be-at-least-32-chars!'
 
-const TEST_DATABASE_URL =
+export const TEST_DATABASE_URL =
   process.env.DATABASE_URL ??
   'postgresql://ecommerce:ecommerce_dev@localhost:5432/order_db'
 
@@ -47,39 +48,21 @@ export function mockProductClient() {
   }
 }
 
-export function mockPublishers() {
-  const events: { topic: string; data: unknown }[] = []
-  return {
-    events,
-    publishOrderPlaced: async (data: unknown) => {
-      events.push({ topic: 'order.placed', data })
-    },
-    publishOrderStatusChanged: async (data: unknown) => {
-      events.push({ topic: 'order.status-changed', data })
-    },
-  }
-}
-
 export async function createTestApp(overrides?: {
   cartClient?: ReturnType<typeof mockCartClient>
   productClient?: ReturnType<typeof mockProductClient>
-  publishers?: ReturnType<typeof createPublishers>
 }) {
   const { db, pool } = createDb(TEST_DATABASE_URL)
-  const publishers = mockPublishers()
-  const publish = overrides?.publishers ?? publishers
 
   const app = await buildApp({
     db,
     cartClient: overrides?.cartClient ?? mockCartClient(),
     productClient: overrides?.productClient ?? mockProductClient(),
-    publishOrderPlaced: publish.publishOrderPlaced,
-    publishOrderStatusChanged: publish.publishOrderStatusChanged,
     createSaga: saga,
   })
   await app.ready()
 
-  return { app, db, pool, publishers }
+  return { app, db, pool }
 }
 
 const ADMIN_ID = '00000000-0000-0000-0000-000000000001'
@@ -107,7 +90,25 @@ export function userToken(
   })
 }
 
+export async function outboxEvents(
+  db: ReturnType<typeof createDb>['db'],
+  topic?: TopicName,
+) {
+  const rows = await db
+    .select()
+    .from(outbox)
+    .where(topic ? eq(outbox.topic, topic) : undefined)
+    .orderBy(asc(outbox.createdAt))
+
+  return rows.map((row) => ({
+    topic: row.topic,
+    key: row.key,
+    data: row.payload,
+  }))
+}
+
 export async function cleanDb(db: ReturnType<typeof createDb>['db']) {
+  await db.execute(sql`DELETE FROM outbox`)
   await db.execute(sql`DELETE FROM order_items`)
   await db.execute(sql`DELETE FROM orders`)
 }

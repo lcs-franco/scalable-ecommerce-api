@@ -1,5 +1,6 @@
 import type { ITokenPayload } from '@ecommerce/auth'
-import type { EventData, Topics } from '@ecommerce/events'
+import { Topics } from '@ecommerce/events'
+import { enqueue, type OutboxDb } from '@ecommerce/events/outbox'
 import { and, desc, eq, sql } from 'drizzle-orm'
 import type { createCartClient } from '../clients/cart.client.js'
 import type { createProductClient } from '../clients/product.client.js'
@@ -30,35 +31,25 @@ interface IDeps {
   db: Db
   cartClient: ReturnType<typeof createCartClient>
   productClient: ReturnType<typeof createProductClient>
-  publishOrderPlaced: (
-    data: EventData<typeof Topics.ORDER_PLACED>,
-  ) => Promise<void>
-  publishOrderStatusChanged: (
-    data: EventData<typeof Topics.ORDER_STATUS_CHANGED>,
-  ) => Promise<void>
   createSaga: typeof saga
 }
 
-function toStatusChanged(
-  order: Order,
-): EventData<typeof Topics.ORDER_STATUS_CHANGED> {
-  return {
-    orderId: order.id,
-    userId: order.userId,
-    email: order.userEmail,
-    status: order.status,
-  }
+function enqueueStatusChanged(tx: OutboxDb, order: Order) {
+  return enqueue(
+    tx,
+    Topics.ORDER_STATUS_CHANGED,
+    {
+      orderId: order.id,
+      userId: order.userId,
+      email: order.userEmail,
+      status: order.status,
+    },
+    { key: order.id },
+  )
 }
 
 export function createOrderService(deps: IDeps) {
-  const {
-    db,
-    cartClient,
-    productClient,
-    publishOrderPlaced,
-    publishOrderStatusChanged,
-    createSaga,
-  } = deps
+  const { db, cartClient, productClient, createSaga } = deps
 
   async function placeOrder(
     user: Pick<ITokenPayload, 'userId' | 'email'>,
@@ -79,7 +70,7 @@ export function createOrderService(deps: IDeps) {
         0,
       )
 
-      const result = await db.transaction(async (tx) => {
+      return db.transaction(async (tx) => {
         const [order] = await tx
           .insert(orders)
           .values({ userId, userEmail: email, total })
@@ -98,23 +89,22 @@ export function createOrderService(deps: IDeps) {
           )
           .returning()
 
+        await enqueue(
+          tx,
+          Topics.ORDER_PLACED,
+          {
+            orderId: order.id,
+            userId,
+            email,
+            items: validatedItems,
+            total,
+            paymentMethodId,
+          },
+          { key: order.id },
+        )
+
         return { ...order, items: insertedItems }
       })
-
-      try {
-        await publishOrderPlaced({
-          orderId: result.id,
-          userId,
-          email,
-          items: validatedItems,
-          total,
-          paymentMethodId,
-        })
-      } catch {
-        // Fire-and-forget — don't fail the request
-      }
-
-      return result
     })
   }
 
@@ -179,7 +169,7 @@ export function createOrderService(deps: IDeps) {
     const updated =
       newStatus === 'cancelled'
         ? await cancel(id, currentStatus)
-        : await transition(existing, newStatus)
+        : await transition(id, currentStatus, newStatus)
 
     if (!updated) {
       const [latest] = await db
@@ -191,49 +181,33 @@ export function createOrderService(deps: IDeps) {
       throw new InvalidStatusTransition(latest.status as OrderStatus, newStatus)
     }
 
-    try {
-      await publishOrderStatusChanged(toStatusChanged(updated))
-    } catch {
-      // Fire-and-forget — don't fail the request
-    }
-
     return updated
   }
 
   async function markAsPaid(orderId: string) {
-    const [row] = await db
-      .update(orders)
-      .set({ status: 'paid' })
-      .where(and(eq(orders.id, orderId), eq(orders.status, 'pending')))
-      .returning()
-
-    if (row) {
-      try {
-        await publishOrderStatusChanged(toStatusChanged(row))
-      } catch {
-        // Fire-and-forget — don't fail the consumer
-      }
-    }
+    await transition(orderId, 'pending', 'paid')
   }
 
   async function markAsCancelled(orderId: string) {
-    const row = await cancel(orderId, 'pending')
-    if (!row) return
-
-    try {
-      await publishOrderStatusChanged(toStatusChanged(row))
-    } catch {
-      // Fire-and-forget — don't fail the consumer
-    }
+    await cancel(orderId, 'pending')
   }
 
-  async function transition(order: Order, status: OrderStatus) {
-    const [row] = await db
-      .update(orders)
-      .set({ status })
-      .where(and(eq(orders.id, order.id), eq(orders.status, order.status)))
-      .returning()
-    return row
+  async function transition(
+    orderId: string,
+    from: OrderStatus,
+    to: OrderStatus,
+  ) {
+    return db.transaction(async (tx) => {
+      const [row] = await tx
+        .update(orders)
+        .set({ status: to })
+        .where(and(eq(orders.id, orderId), eq(orders.status, from)))
+        .returning()
+
+      if (row) await enqueueStatusChanged(tx, row)
+
+      return row
+    })
   }
 
   async function cancel(orderId: string, from: OrderStatus) {
@@ -262,6 +236,9 @@ export function createOrderService(deps: IDeps) {
         .set({ status: 'cancelled' })
         .where(eq(orders.id, orderId))
         .returning()
+
+      await enqueueStatusChanged(tx, row)
+
       return row
     })
   }
