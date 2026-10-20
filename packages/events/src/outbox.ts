@@ -1,4 +1,4 @@
-import { asc, inArray, isNull, sql } from 'drizzle-orm'
+import { and, asc, inArray, isNotNull, isNull, lt, sql } from 'drizzle-orm'
 import {
   index,
   jsonb,
@@ -50,17 +50,62 @@ export type OutboxProducer = Pick<ReturnType<typeof createProducer>, 'publish'>
 interface IOutboxRelayOptions {
   db: OutboxDb
   producer: OutboxProducer
-  log: { error: (obj: object, msg: string) => void }
+  log: {
+    info: (obj: object, msg: string) => void
+    error: (obj: object, msg: string) => void
+  }
   intervalMs?: number
   batchSize?: number
+  retentionMs?: number
+  purgeIntervalMs?: number
+  purgeBatchSize?: number
 }
 
-export function createOutboxRelay(options: IOutboxRelayOptions) {
-  const { db, producer, log, intervalMs = 1000, batchSize = 100 } = options
-
+function createLoop(
+  run: () => Promise<void>,
+  intervalMs: number,
+  onError: (err: unknown) => void,
+) {
   let timer: ReturnType<typeof setTimeout> | undefined
   let running: Promise<void> | undefined
   let stopped = true
+
+  async function tick() {
+    running = run().catch(onError)
+    await running
+    running = undefined
+
+    if (!stopped) timer = setTimeout(tick, intervalMs)
+  }
+
+  function start() {
+    if (!stopped) return
+
+    stopped = false
+
+    if (!running) timer = setTimeout(tick, intervalMs)
+  }
+
+  async function stop() {
+    stopped = true
+    clearTimeout(timer)
+    await running
+  }
+
+  return { start, stop }
+}
+
+export function createOutboxRelay(options: IOutboxRelayOptions) {
+  const {
+    db,
+    producer,
+    log,
+    intervalMs = 1000,
+    batchSize = 100,
+    retentionMs = 7 * 24 * 60 * 60 * 1000,
+    purgeIntervalMs = 60 * 60 * 1000,
+    purgeBatchSize = 1000,
+  } = options
 
   async function publishPending() {
     await db.transaction(async (tx) => {
@@ -102,29 +147,54 @@ export function createOutboxRelay(options: IOutboxRelayOptions) {
     })
   }
 
-  async function tick() {
-    running = publishPending().catch((err) =>
-      log.error({ err }, 'Outbox relay tick failed'),
-    )
-    await running
-    running = undefined
+  async function purgeBatch(cutoff: Date) {
+    return await db.transaction(async (tx) => {
+      const expired = tx
+        .select({ id: outbox.id })
+        .from(outbox)
+        .where(
+          and(isNotNull(outbox.publishedAt), lt(outbox.publishedAt, cutoff)),
+        )
+        .limit(purgeBatchSize)
+        .for('update', { skipLocked: true })
 
-    if (!stopped) timer = setTimeout(tick, intervalMs)
+      const rows = await tx
+        .delete(outbox)
+        .where(inArray(outbox.id, expired))
+        .returning({ id: outbox.id })
+
+      return rows.length
+    })
   }
 
+  async function purgePublished() {
+    const cutoff = new Date(Date.now() - retentionMs)
+    let deleted = 0
+    let batch: number
+
+    do {
+      batch = await purgeBatch(cutoff)
+      deleted += batch
+    } while (batch === purgeBatchSize)
+
+    if (deleted > 0) log.info({ deleted }, 'Purged published outbox events')
+  }
+
+  const publishLoop = createLoop(publishPending, intervalMs, (err) =>
+    log.error({ err }, 'Outbox relay tick failed'),
+  )
+  const purgeLoop = createLoop(purgePublished, purgeIntervalMs, (err) =>
+    log.error({ err }, 'Outbox purge failed'),
+  )
+
   function start() {
-    if (!stopped) return
-
-    stopped = false
-
-    if (!running) timer = setTimeout(tick, intervalMs)
+    publishLoop.start()
+    purgeLoop.start()
   }
 
   async function stop() {
-    stopped = true
-    clearTimeout(timer)
-    await running
+    await Promise.all([publishLoop.stop(), purgeLoop.stop()])
   }
 
-  return { start, stop, publishPending }
+  return { start, stop, publishPending, purgePublished }
 }
