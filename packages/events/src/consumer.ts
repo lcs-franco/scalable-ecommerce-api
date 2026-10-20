@@ -1,4 +1,5 @@
 import type { ConsumerConfig, Kafka } from 'kafkajs'
+import { EVENT_ID_HEADER } from './headers.js'
 import { type EventData, EventSchemas, type TopicName } from './schemas.js'
 
 export interface IEventMeta {
@@ -52,7 +53,7 @@ export function createConsumer(
           return
         }
 
-        const eventId = message.headers?.['event-id']?.toString()
+        const eventId = message.headers?.[EVENT_ID_HEADER]?.toString()
 
         await handler(validated, { eventId })
       },

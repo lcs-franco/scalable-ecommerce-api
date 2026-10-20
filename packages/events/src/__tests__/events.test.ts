@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { ZodError } from 'zod'
+import { EVENT_ID_HEADER } from '../headers.js'
 import { createProducer } from '../producer.js'
 import { Topics } from '../schemas.js'
 import { collectEvents, createTestConsumer, testKafka } from '../testing.js'
@@ -77,17 +78,21 @@ describe('events against the broker', () => {
 
   it('passes the event-id header to the handler as meta.eventId', async () => {
     const consumer = await createTestConsumer(kafka)
+
     const received = new Map<string, string | undefined>()
+
     await consumer.subscribe(Topics.USER_REGISTERED, async (data, meta) => {
       received.set(data.userId, meta.eventId)
     })
+
     await consumer.start()
+
     const withHeader = userRegistered()
     const withoutHeader = userRegistered()
     const eventId = randomUUID()
 
     await producer.publish(Topics.USER_REGISTERED, withHeader, {
-      headers: { 'event-id': eventId },
+      headers: { [EVENT_ID_HEADER]: eventId },
     })
     await producer.publish(Topics.USER_REGISTERED, withoutHeader)
 
@@ -97,6 +102,7 @@ describe('events against the broker', () => {
     }, WAIT)
     expect(received.get(withHeader.userId)).toBe(eventId)
     expect(received.get(withoutHeader.userId)).toBeUndefined()
+
     await consumer.disconnect()
   })
 })

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { createProducer, Topics } from '@ecommerce/events'
+import { createProducer, EVENT_ID_HEADER, Topics } from '@ecommerce/events'
 import { createTestConsumer, testKafka } from '@ecommerce/events/testing'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import {
@@ -125,16 +125,16 @@ describe('setupConsumers on the broker', () => {
 
     await producer.publish(Topics.ORDER_PLACED, placed, {
       key,
-      headers: { 'event-id': eventId },
+      headers: { [EVENT_ID_HEADER]: eventId },
     })
     await producer.publish(Topics.ORDER_PLACED, placed, {
       key,
-      headers: { 'event-id': eventId },
+      headers: { [EVENT_ID_HEADER]: eventId },
     })
     // Same key, same partition: once it is sent, the duplicate was already consumed.
     await producer.publish(Topics.ORDER_PLACED, sentinel, {
       key,
-      headers: { 'event-id': randomUUID() },
+      headers: { [EVENT_ID_HEADER]: randomUUID() },
     })
 
     await vi.waitFor(() => expect(sentTo(sentinel.email)).toHaveLength(1), {
