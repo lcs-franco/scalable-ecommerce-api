@@ -244,6 +244,19 @@ describe('outbox relay', () => {
     expect(infos).toEqual([{ deleted: 1 }])
   })
 
+  it('keeps a row created before the retention window but published within it', async () => {
+    const late = await insertRow(
+      new Date(Date.now() - 8 * DAY_MS),
+      new Date(Date.now() - DAY_MS),
+    )
+    const { producer } = fakeProducer()
+    const relay = createOutboxRelay({ db, producer, log: silentLog })
+
+    await relay.purgePublished()
+
+    expect(await remainingIds()).toEqual([late])
+  })
+
   it('drains a backlog larger than the batch size in one purge', async () => {
     for (let i = 0; i < 5; i++) await insertPublished(8)
     const { producer } = fakeProducer()
