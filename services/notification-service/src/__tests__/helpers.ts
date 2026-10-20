@@ -1,5 +1,6 @@
 import type { Logger } from '@ecommerce/logger'
 import { vi } from 'vitest'
+import { createDeduper, DEDUPE_KEY_PREFIX } from '../dedupe.js'
 import type {
   IEmailMessage,
   IEmailProvider,
@@ -13,6 +14,7 @@ export const ORDER_ID = '11111111-2222-3333-4444-555555555555'
 export const PAYMENT_ID = '66666666-7777-8888-9999-000000000000'
 export const PRODUCT_ID = '00000000-0000-0000-0000-0000000000aa'
 export const EMAIL = 'user@test.com'
+export const DEDUPE_TTL_SECONDS = 60
 
 export function fakeEmailProvider() {
   const sent: IEmailMessage[] = []
@@ -51,8 +53,12 @@ export function testRedis() {
   return createRedis(TEST_REDIS_URL)
 }
 
+export function testDeduper(redis: RedisClient, log: Logger = fakeLogger()) {
+  return createDeduper({ redis, ttlSeconds: DEDUPE_TTL_SECONDS, log })
+}
+
 export async function cleanRedis(redis: RedisClient) {
-  const keys = await redis.keys('notification:event:*')
+  const keys = await redis.keys(`${DEDUPE_KEY_PREFIX}*`)
 
   if (keys.length > 0) await redis.del(...keys)
 }

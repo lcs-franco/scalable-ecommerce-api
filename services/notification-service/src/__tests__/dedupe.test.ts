@@ -1,10 +1,14 @@
 import { randomUUID } from 'node:crypto'
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
-import { createDeduper } from '../dedupe.js'
+import { DEDUPE_KEY_PREFIX } from '../dedupe.js'
 import { createRedis } from '../redis.js'
-import { cleanRedis, fakeLogger, testRedis } from './helpers.js'
-
-const TTL_SECONDS = 60
+import {
+  cleanRedis,
+  DEDUPE_TTL_SECONDS,
+  fakeLogger,
+  testDeduper,
+  testRedis,
+} from './helpers.js'
 
 describe('createDeduper against Redis', () => {
   const redis = testRedis()
@@ -19,11 +23,7 @@ describe('createDeduper against Redis', () => {
   })
 
   it('claims an event id once', async () => {
-    const deduper = createDeduper({
-      redis,
-      ttlSeconds: TTL_SECONDS,
-      log: fakeLogger(),
-    })
+    const deduper = testDeduper(redis)
     const eventId = randomUUID()
 
     expect(await deduper.claim(eventId)).toBe(true)
@@ -32,7 +32,7 @@ describe('createDeduper against Redis', () => {
 
   it('processes an event without an id and logs at debug', async () => {
     const log = fakeLogger()
-    const deduper = createDeduper({ redis, ttlSeconds: TTL_SECONDS, log })
+    const deduper = testDeduper(redis, log)
 
     expect(await deduper.claim(undefined)).toBe(true)
     expect(await deduper.claim(undefined)).toBe(true)
@@ -40,25 +40,24 @@ describe('createDeduper against Redis', () => {
   })
 
   it('stores the claim with a TTL', async () => {
-    const deduper = createDeduper({
-      redis,
-      ttlSeconds: TTL_SECONDS,
-      log: fakeLogger(),
-    })
+    const deduper = testDeduper(redis)
     const eventId = randomUUID()
 
     await deduper.claim(eventId)
 
-    const ttl = await redis.ttl(`notification:event:${eventId}`)
+    const ttl = await redis.ttl(`${DEDUPE_KEY_PREFIX}${eventId}`)
+
     expect(ttl).toBeGreaterThan(0)
-    expect(ttl).toBeLessThanOrEqual(TTL_SECONDS)
+    expect(ttl).toBeLessThanOrEqual(DEDUPE_TTL_SECONDS)
   })
 
   it('fails open and logs when Redis is unavailable', async () => {
     const down = createRedis('redis://localhost:1')
+
     down.on('error', () => {})
+
     const log = fakeLogger()
-    const deduper = createDeduper({ redis: down, ttlSeconds: TTL_SECONDS, log })
+    const deduper = testDeduper(down, log)
     const eventId = randomUUID()
 
     expect(await deduper.claim(eventId)).toBe(true)
@@ -66,6 +65,7 @@ describe('createDeduper against Redis', () => {
       expect.objectContaining({ eventId }),
       expect.any(String),
     )
+
     down.disconnect()
   })
 })

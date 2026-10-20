@@ -7,12 +7,14 @@ interface IDeps {
   log: Logger
 }
 
+export const DEDUPE_KEY_PREFIX = 'notification:event:'
+
 export type Deduper = ReturnType<typeof createDeduper>
 
 export function createDeduper(deps: IDeps) {
   const { redis, ttlSeconds, log } = deps
 
-  // true = first delivery, process it; claimed before sending since deliver() never retries.
+  // Claimed before sending: deliver() never retries a failed email.
   async function claim(eventId?: string): Promise<boolean> {
     if (!eventId) {
       log.debug('Event without event-id header, processing without dedupe')
@@ -21,7 +23,7 @@ export function createDeduper(deps: IDeps) {
 
     try {
       const result = await redis.set(
-        `notification:event:${eventId}`,
+        `${DEDUPE_KEY_PREFIX}${eventId}`,
         '1',
         'EX',
         ttlSeconds,
@@ -31,6 +33,7 @@ export function createDeduper(deps: IDeps) {
       if (result === 'OK') return true
 
       log.info({ eventId }, 'Skipping duplicate event')
+
       return false
     } catch (err) {
       log.error({ err, eventId }, 'Dedupe check failed, processing anyway')

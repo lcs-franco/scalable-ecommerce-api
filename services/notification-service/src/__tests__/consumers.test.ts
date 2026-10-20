@@ -9,7 +9,6 @@ import {
   paymentFailedEmail,
   welcomeEmail,
 } from '../emails/index.js'
-import { createDeduper } from '../dedupe.js'
 import { setupConsumers } from '../kafka/consumers.js'
 import { createNotificationService } from '../services/notification.service.js'
 import {
@@ -19,6 +18,7 @@ import {
   ORDER_ID,
   PAYMENT_ID,
   PRODUCT_ID,
+  testDeduper,
   testRedis,
 } from './helpers.js'
 
@@ -49,7 +49,7 @@ describe('setupConsumers on the broker', () => {
         email: email.provider,
         log: fakeLogger(),
       }),
-      deduper: createDeduper({ redis, ttlSeconds: 60, log: fakeLogger() }),
+      deduper: testDeduper(redis),
     })
   })
 
