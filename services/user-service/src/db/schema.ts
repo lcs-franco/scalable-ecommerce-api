@@ -28,3 +28,5 @@ export const refreshTokens = pgTable('refresh_tokens', {
     .notNull()
     .defaultNow(),
 })
+
+export { outbox } from '@ecommerce/events/outbox'

@@ -1,25 +1,20 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
-import { cleanDb, createTestApp } from './helpers.js'
+import { cleanDb, createTestApp, outboxEvents } from './helpers.js'
 
 describe('auth routes', () => {
   let app: Awaited<ReturnType<typeof createTestApp>>['app']
   let db: Awaited<ReturnType<typeof createTestApp>>['db']
   let pool: Awaited<ReturnType<typeof createTestApp>>['pool']
-  let publishedEvents: Awaited<
-    ReturnType<typeof createTestApp>
-  >['publishedEvents']
 
   beforeAll(async () => {
     const ctx = await createTestApp()
     app = ctx.app
     db = ctx.db
     pool = ctx.pool
-    publishedEvents = ctx.publishedEvents
   })
 
   afterEach(async () => {
     await cleanDb(db)
-    publishedEvents.length = 0
   })
 
   afterAll(async () => {
@@ -45,7 +40,7 @@ describe('auth routes', () => {
       expect(body.refreshToken).toBeDefined()
     })
 
-    it('should publish user.registered event', async () => {
+    it('should enqueue user.registered keyed by user', async () => {
       await app.inject({
         method: 'POST',
         url: '/register',
@@ -56,11 +51,19 @@ describe('auth routes', () => {
         },
       })
 
-      expect(publishedEvents).toHaveLength(1)
-      expect(publishedEvents[0]).toMatchObject({
-        email: 'test@example.com',
-        name: 'Test User',
-      })
+      const events = await outboxEvents(db)
+
+      expect(events).toEqual([
+        {
+          topic: 'user.registered',
+          key: expect.any(String),
+          data: {
+            userId: events[0]?.key,
+            email: 'test@example.com',
+            name: 'Test User',
+          },
+        },
+      ])
     })
 
     it('should return 409 for duplicate email', async () => {
