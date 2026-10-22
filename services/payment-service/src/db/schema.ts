@@ -35,3 +35,5 @@ export const payments = pgTable('payments', {
 })
 
 export type Payment = typeof payments.$inferSelect
+
+export { outbox } from '@ecommerce/events/outbox'

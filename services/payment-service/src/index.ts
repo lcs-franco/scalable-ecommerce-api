@@ -1,5 +1,6 @@
 /* eslint-disable no-console */
 import { createConsumer, createProducer } from '@ecommerce/events'
+import { createOutboxRelay } from '@ecommerce/events/outbox'
 import { createLogger } from '@ecommerce/logger'
 import { Kafka } from 'kafkajs'
 import Stripe from 'stripe'
@@ -7,7 +8,6 @@ import { buildApp } from './app.js'
 import { config } from './config/env.js'
 import { createDb } from './db/index.js'
 import { setupConsumers } from './kafka/consumers.js'
-import { createPublishers } from './kafka/publishers.js'
 import { createStripeProcessor } from './payments/stripe.processor.js'
 
 async function main() {
@@ -31,11 +31,9 @@ async function main() {
   })
   log.info(`Payment processor: ${processor.name} (test mode)`)
 
-  const app = await buildApp({
-    db,
-    processor,
-    publishers: createPublishers(producer),
-  })
+  const app = await buildApp({ db, processor })
+
+  const relay = createOutboxRelay({ db, producer, log })
 
   await setupConsumers({
     consumer,
@@ -45,6 +43,7 @@ async function main() {
 
   const shutdown = async () => {
     await app.close()
+    await relay.stop()
     await consumer.disconnect()
     await producer.disconnect()
     await pool.end()
@@ -53,6 +52,7 @@ async function main() {
   process.on('SIGINT', shutdown)
 
   await app.listen({ port: config.PORT, host: '0.0.0.0' })
+  relay.start()
   console.log('App running on port:', config.PORT)
 }
 

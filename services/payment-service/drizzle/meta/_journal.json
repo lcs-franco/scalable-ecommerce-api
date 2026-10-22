@@ -15,6 +15,13 @@
       "when": 1791918832066,
       "tag": "0001_loose_proemial_gods",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792688271068,
+      "tag": "0002_strange_mulholland_black",
+      "breakpoints": true
     }
   ]
 }

@@ -79,7 +79,7 @@ Packages must be built (`pnpm build`) before services can import them.
 
 ### Key Patterns
 
-- **Service factory pattern:** Each service exports `buildApp(deps)` taking injected dependencies (db, clients, publishers). Entry point (`index.ts`) wires everything together.
+- **Service factory pattern:** Each service exports `buildApp(deps)` taking injected dependencies (db, clients, processors). Entry point (`index.ts`) wires everything together.
 - **Saga pattern:** Order placement uses compensating transactions — `saga()` registers rollback functions and executes them in LIFO order on failure.
 - **Domain errors:** Services define `ApplicationError` subclasses with `statusCode` and `code`. The error handler maps `ZodError → 400`, `ApplicationError → custom status`, unknown → 500.
 - **Config validation:** Each service validates env vars at startup with Zod. Missing/invalid → process exits immediately.

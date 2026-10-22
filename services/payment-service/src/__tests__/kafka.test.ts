@@ -1,4 +1,5 @@
 import { createProducer, Topics } from '@ecommerce/events'
+import { createOutboxRelay } from '@ecommerce/events/outbox'
 import {
   collectEvents,
   createTestConsumer,
@@ -15,7 +16,6 @@ import {
   vi,
 } from 'vitest'
 import { setupConsumers } from '../kafka/consumers.js'
-import { createPublishers } from '../kafka/publishers.js'
 import { cleanDb, createTestApp, orderPlacedEvent } from './helpers.js'
 
 const WAIT = { timeout: 10_000 }
@@ -25,15 +25,19 @@ describe('payment-service on the broker', () => {
   const producer = createProducer(kafka)
   let ctx: Awaited<ReturnType<typeof createTestApp>>
   let consumer: Awaited<ReturnType<typeof createTestConsumer>>
+  let relay: ReturnType<typeof createOutboxRelay>
+  const log = createLogger({ service: 'payment-service', level: 'silent' })
 
   beforeAll(async () => {
     await producer.connect()
-    ctx = await createTestApp({ publishers: createPublishers(producer) })
+    ctx = await createTestApp()
+    relay = createOutboxRelay({ db: ctx.db, producer, log, intervalMs: 100 })
+    relay.start()
     consumer = await createTestConsumer(kafka)
     await setupConsumers({
       consumer,
       paymentService: ctx.app.paymentService,
-      log: createLogger({ service: 'payment-service', level: 'silent' }),
+      log,
     })
   })
 
@@ -42,6 +46,7 @@ describe('payment-service on the broker', () => {
   })
 
   afterAll(async () => {
+    await relay.stop()
     await consumer.disconnect()
     await producer.disconnect()
     await ctx.app.close()
