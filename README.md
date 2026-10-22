@@ -123,34 +123,34 @@ If anything fails before the order row commits (empty cart, insufficient stock, 
 
 ### Saga with compensations
 
-`placeOrder` checks out the cart, then reserves stock, then writes the order. Each step registers its undo (`restore cart`, `restore stock`), and on failure they run in reverse order. A shared database or a two-phase commit across services would couple them; a saga keeps each service the owner of its data and makes the rollback explicit. Code: [`services/order-service/src/config/saga.ts`](services/order-service/src/config/saga.ts), [`services/order-service/src/services/order.service.ts`](services/order-service/src/services/order.service.ts). Spec: [`specs/04-order-service.md`](specs/04-order-service.md).
+`placeOrder` checks out the cart, then reserves stock, then writes the order. Each step registers its undo (`restore cart`, `restore stock`), and on failure they run in reverse order. A shared database or a two-phase commit across services would couple them; a saga keeps each service the owner of its data and makes the rollback explicit. Code: [`services/order-service/src/config/saga.ts`](services/order-service/src/config/saga.ts), [`services/order-service/src/services/order.service.ts`](services/order-service/src/services/order.service.ts).
 
 ### Transactional outbox, at-least-once delivery, idempotent consumers
 
-Services never publish to Kafka from a request. They `enqueue` the event into their own `outbox` table in the same transaction as the state change, and a relay in the service process publishes pending rows in order, marking them published. A commit without its event, or an event for a rolled-back change, is impossible ([#37](https://github.com/lcs-franco/scalable-ecommerce-api/issues/37)). Published rows are purged after 7 days ([#62](https://github.com/lcs-franco/scalable-ecommerce-api/issues/62)). Code: [`packages/events/src/outbox.ts`](packages/events/src/outbox.ts).
+Services never publish to Kafka from a request. They `enqueue` the event into their own `outbox` table in the same transaction as the state change, and a relay in the service process publishes pending rows in order, marking them published. A commit without its event, or an event for a rolled-back change, is impossible. Published rows are purged after 7 days. Code: [`packages/events/src/outbox.ts`](packages/events/src/outbox.ts).
 
 The relay can publish a row twice (crash between publish and mark), so every consumer tolerates duplicates:
 
-- each message carries the outbox row id as the `event-id` header, stable across redeliveries ([#64](https://github.com/lcs-franco/scalable-ecommerce-api/issues/64));
-- notification-service claims the `event-id` in Redis (`SET NX` with a TTL) before sending, so an email goes out once ([#61](https://github.com/lcs-franco/scalable-ecommerce-api/issues/61), [`services/notification-service/src/dedupe.ts`](services/notification-service/src/dedupe.ts));
+- each message carries the outbox row id as the `event-id` header, stable across redeliveries;
+- notification-service claims the `event-id` in Redis (`SET NX` with a TTL) before sending, so an email goes out once ([`services/notification-service/src/dedupe.ts`](services/notification-service/src/dedupe.ts));
 - payment-service has one payment per order (unique `order_id`) and charges Stripe with an idempotency key derived from the order ([`services/payment-service/src/services/payment.service.ts`](services/payment-service/src/services/payment.service.ts));
-- payment events only move an order out of `pending`, and stock restore after a failed payment is keyed by order id in product-service, so a second `payment.failed` restores nothing ([#38](https://github.com/lcs-franco/scalable-ecommerce-api/issues/38)).
+- payment events only move an order out of `pending`, and stock restore after a failed payment is keyed by order id in product-service, so a second `payment.failed` restores nothing.
 
 ### Gateway allowlist and access levels
 
-The gateway proxies only the routes listed in [`services/api-gateway/src/routes/table.ts`](services/api-gateway/src/routes/table.ts); anything else is a 404, so a new internal route can never leak by accident. Each route declares `public`, `user` or `admin`, checked before proxying, and requests are rate limited in Redis with a sliding window (anonymous and authenticated limits differ). The gateway forwards `Authorization` plus `X-User-Id`, `X-User-Role` and `X-Request-Id`; services still verify the JWT themselves. Spec: [`specs/07-api-gateway.md`](specs/07-api-gateway.md).
+The gateway proxies only the routes listed in [`services/api-gateway/src/routes/table.ts`](services/api-gateway/src/routes/table.ts); anything else is a 404, so a new internal route can never leak by accident. Each route declares `public`, `user` or `admin`, checked before proxying, and requests are rate limited in Redis with a sliding window (anonymous and authenticated limits differ). The gateway forwards `Authorization` plus `X-User-Id`, `X-User-Role` and `X-Request-Id`; services still verify the JWT themselves.
 
 ### Internal-token service auth
 
-Service-to-service routes (cart checkout, validate order, restore stock) declare `config: { internal: true }`. The shared [`@ecommerce/auth`](packages/auth/src/index.ts) plugin then requires the `x-internal-token` shared secret instead of a JWT ([#30](https://github.com/lcs-franco/scalable-ecommerce-api/issues/30)), and [`@ecommerce/docs`](packages/docs/src/index.ts) hides the route from the API docs. Cart restore is the exception: it calls the public `POST /cart/items` with the shopper's own token.
+Service-to-service routes (cart checkout, validate order, restore stock) declare `config: { internal: true }`. The shared [`@ecommerce/auth`](packages/auth/src/index.ts) plugin then requires the `x-internal-token` shared secret instead of a JWT, and [`@ecommerce/docs`](packages/docs/src/index.ts) hides the route from the API docs. Cart restore is the exception: it calls the public `POST /cart/items` with the shopper's own token.
 
 ### Poison messages
 
-A message that is not JSON or fails its Zod schema is logged with topic, partition and offset and skipped, instead of blocking the partition with endless retries. Code: [`packages/events/src/consumer.ts`](packages/events/src/consumer.ts). Handler failures are not yet routed to a dead-letter topic ([#34](https://github.com/lcs-franco/scalable-ecommerce-api/issues/34)).
+A message that is not JSON or fails its Zod schema is logged with topic, partition and offset and skipped, instead of blocking the partition with endless retries. Code: [`packages/events/src/consumer.ts`](packages/events/src/consumer.ts).
 
 ### Fail-fast startup and health-based readiness
 
-Every service validates its environment with Zod and exits on a missing or invalid variable. Migrations and Kafka connections run before `listen`, so once `GET /health` answers, the service is ready. Compose uses that as the healthcheck and starts dependents (gateway, seeds) only after it passes. Code: each service's env config and `src/index.ts`, [`docker-compose.yml`](docker-compose.yml). Spec: [`specs/00-mvp-platform.md`](specs/00-mvp-platform.md).
+Every service validates its environment with Zod and exits on a missing or invalid variable. Migrations and Kafka connections run before `listen`, so once `GET /health` answers, the service is ready. Compose uses that as the healthcheck and starts dependents (gateway, seeds) only after it passes. Code: each service's env config and `src/index.ts`, [`docker-compose.yml`](docker-compose.yml).
 
 ## Services
 
@@ -164,7 +164,7 @@ Every service validates its environment with Zod and exits on a missing or inval
 | payment-service      | 3005 | Postgres `payment_db` | Stripe charges driven by `order.placed`         | [localhost:3005/docs](http://localhost:3005/docs) |
 | notification-service | 3006 | Redis (event dedupe)  | Emails (SMTP, Mailpit in dev) from events       | none (no HTTP API)                                |
 
-The per-service docs (Swagger + Scalar, generated from the Zod route schemas) are reachable only under `pnpm dev`, which exposes ports 3001–3006; `docker compose up` publishes no service port except the gateway's. Aggregated docs in the gateway are [#45](https://github.com/lcs-franco/scalable-ecommerce-api/issues/45). Each service has a spec in [`specs/`](specs/).
+The per-service docs (Swagger + Scalar, generated from the Zod route schemas) are reachable only under `pnpm dev`, which exposes ports 3001–3006; `docker compose up` publishes no service port except the gateway's.
 
 ## Tech stack
 
@@ -189,7 +189,6 @@ packages/
   events/               → topics, Zod event schemas, producer/consumer, outbox, test helpers
   logger/               → Pino logger factory
 
-specs/                  → MVP and per-service specs
 infra/postgres/         → script that creates the service databases
 ```
 
