@@ -1,7 +1,12 @@
 import { eq } from 'drizzle-orm'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { payments } from '../db/schema.js'
-import { cleanDb, createTestApp, orderPlacedEvent } from './helpers.js'
+import {
+  cleanDb,
+  createTestApp,
+  orderPlacedEvent,
+  outboxEvents,
+} from './helpers.js'
 
 describe('paymentService.processOrderPlaced', () => {
   let ctx: Awaited<ReturnType<typeof createTestApp>>
@@ -12,7 +17,6 @@ describe('paymentService.processOrderPlaced', () => {
 
   afterEach(async () => {
     await cleanDb(ctx.db)
-    ctx.publishers.events.length = 0
     ctx.fake.calls.length = 0
     ctx.fake.willReturn({ success: true, providerPaymentId: 'pi_fake_1' })
   })
@@ -27,10 +31,27 @@ describe('paymentService.processOrderPlaced', () => {
       .select()
       .from(payments)
       .where(eq(payments.orderId, orderId))
+
     return row
   }
 
-  it('confirms the payment and publishes payment.confirmed on success', async () => {
+  async function insertPendingPayment(
+    event: ReturnType<typeof orderPlacedEvent>,
+  ) {
+    const [row] = await ctx.db
+      .insert(payments)
+      .values({
+        orderId: event.orderId,
+        userId: event.userId,
+        userEmail: event.email,
+        amount: event.total,
+      })
+      .returning()
+
+    return row
+  }
+
+  it('confirms the payment and enqueues payment.confirmed on success', async () => {
     const event = orderPlacedEvent()
 
     await ctx.app.paymentService.processOrderPlaced(event)
@@ -44,9 +65,10 @@ describe('paymentService.processOrderPlaced', () => {
     expect(row.providerPaymentId).toBe('pi_fake_1')
     expect(row.failureReason).toBeNull()
 
-    expect(ctx.publishers.events).toEqual([
+    expect(await outboxEvents(ctx.db)).toEqual([
       {
         topic: 'payment.confirmed',
+        key: row.id,
         data: {
           orderId: event.orderId,
           paymentId: row.id,
@@ -75,7 +97,7 @@ describe('paymentService.processOrderPlaced', () => {
     ])
   })
 
-  it('marks the payment failed and publishes payment.failed on failure', async () => {
+  it('marks the payment failed and enqueues payment.failed on failure', async () => {
     ctx.fake.willReturn({
       success: false,
       reason: 'Your card was declined.',
@@ -90,9 +112,10 @@ describe('paymentService.processOrderPlaced', () => {
     expect(row.failureReason).toBe('Your card was declined.')
     expect(row.providerPaymentId).toBe('pi_declined')
 
-    expect(ctx.publishers.events).toEqual([
+    expect(await outboxEvents(ctx.db)).toEqual([
       {
         topic: 'payment.failed',
+        key: row.id,
         data: {
           orderId: event.orderId,
           paymentId: row.id,
@@ -104,35 +127,48 @@ describe('paymentService.processOrderPlaced', () => {
     ])
   })
 
-  it('re-publishes the stored outcome without charging again on a terminal redelivery', async () => {
+  it('enqueues no second event and does not charge again on a terminal redelivery', async () => {
     const event = orderPlacedEvent()
     await ctx.app.paymentService.processOrderPlaced(event)
-    const first = ctx.publishers.events[0]
+    const first = await outboxEvents(ctx.db)
 
-    // Neither a later processor result nor the redelivered event's fields may
-    // leak into the republished payload: it comes from the stored row
     ctx.fake.willReturn({ success: false, reason: 'should not be used' })
-    await ctx.app.paymentService.processOrderPlaced({
-      ...event,
-      email: 'changed@test.com',
-    })
+    await ctx.app.paymentService.processOrderPlaced(event)
 
     expect(ctx.fake.calls).toHaveLength(1)
-    expect(ctx.publishers.events).toEqual([first, first])
+    expect(await outboxEvents(ctx.db)).toEqual(first)
     expect((await findPayment(event.orderId)).status).toBe('confirmed')
+  })
+
+  it('enqueues nothing when another consumer already finished the payment', async () => {
+    const event = orderPlacedEvent()
+    const leftover = await insertPendingPayment(event)
+
+    const original = ctx.fake.processor.processPayment
+    ctx.fake.processor.processPayment = async () => {
+      await ctx.db
+        .update(payments)
+        .set({ status: 'failed', failureReason: 'other consumer' })
+        .where(eq(payments.id, leftover.id))
+
+      return { success: true, providerPaymentId: 'pi_late' }
+    }
+
+    try {
+      await ctx.app.paymentService.processOrderPlaced(event)
+    } finally {
+      ctx.fake.processor.processPayment = original
+    }
+
+    expect(await outboxEvents(ctx.db)).toEqual([])
+    expect((await findPayment(event.orderId)).failureReason).toBe(
+      'other consumer',
+    )
   })
 
   it('reprocesses a pending row left over by a crash', async () => {
     const event = orderPlacedEvent()
-    const [leftover] = await ctx.db
-      .insert(payments)
-      .values({
-        orderId: event.orderId,
-        userId: event.userId,
-        userEmail: event.email,
-        amount: event.total,
-      })
-      .returning()
+    const leftover = await insertPendingPayment(event)
 
     await ctx.app.paymentService.processOrderPlaced(event)
 
@@ -140,6 +176,6 @@ describe('paymentService.processOrderPlaced', () => {
     expect(row.id).toBe(leftover.id)
     expect(row.status).toBe('confirmed')
     expect(ctx.fake.calls).toHaveLength(1)
-    expect(ctx.publishers.events).toHaveLength(1)
+    expect(await outboxEvents(ctx.db)).toHaveLength(1)
   })
 })

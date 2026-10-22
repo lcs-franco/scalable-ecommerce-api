@@ -1,7 +1,8 @@
-import { sql } from 'drizzle-orm'
+import type { TopicName } from '@ecommerce/events'
+import { asc, eq, sql } from 'drizzle-orm'
 import { buildApp } from '../app.js'
 import { createDb } from '../db/index.js'
-import type { IPaymentPublishers } from '../services/payment.service.js'
+import { outbox } from '../db/schema.js'
 import type {
   IPaymentProcessor,
   PaymentResult,
@@ -39,34 +40,14 @@ export function fakeProcessor() {
   }
 }
 
-export function mockPublishers() {
-  const events: { topic: string; data: unknown }[] = []
-  return {
-    events,
-    publishPaymentConfirmed: async (data: unknown) => {
-      events.push({ topic: 'payment.confirmed', data })
-    },
-    publishPaymentFailed: async (data: unknown) => {
-      events.push({ topic: 'payment.failed', data })
-    },
-  }
-}
-
-export async function createTestApp(overrides?: {
-  publishers?: IPaymentPublishers
-}) {
+export async function createTestApp() {
   const { db, pool } = createDb(TEST_DATABASE_URL)
-  const publishers = mockPublishers()
   const fake = fakeProcessor()
 
-  const app = await buildApp({
-    db,
-    processor: fake.processor,
-    publishers: overrides?.publishers ?? publishers,
-  })
+  const app = await buildApp({ db, processor: fake.processor })
   await app.ready()
 
-  return { app, db, pool, publishers, fake }
+  return { app, db, pool, fake }
 }
 
 type App = Awaited<ReturnType<typeof createTestApp>>['app']
@@ -112,6 +93,24 @@ export function orderPlacedEvent(
   }
 }
 
+export async function outboxEvents(
+  db: ReturnType<typeof createDb>['db'],
+  topic?: TopicName,
+) {
+  const rows = await db
+    .select()
+    .from(outbox)
+    .where(topic ? eq(outbox.topic, topic) : undefined)
+    .orderBy(asc(outbox.createdAt))
+
+  return rows.map((row) => ({
+    topic: row.topic,
+    key: row.key,
+    data: row.payload,
+  }))
+}
+
 export async function cleanDb(db: ReturnType<typeof createDb>['db']) {
+  await db.execute(sql`DELETE FROM outbox`)
   await db.execute(sql`DELETE FROM payments`)
 }

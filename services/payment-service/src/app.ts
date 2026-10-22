@@ -14,7 +14,6 @@ import type { IPaymentProcessor } from './payments/payment-processor.js'
 import { paymentRoutes } from './routes/payments/payment.routes.js'
 import {
   createPaymentService,
-  type IPaymentPublishers,
   type PaymentService,
 } from './services/payment.service.js'
 
@@ -28,11 +27,10 @@ declare module 'fastify' {
 interface IBuildAppOptions {
   db: Db
   processor: IPaymentProcessor
-  publishers: IPaymentPublishers
 }
 
 export async function buildApp(opts: IBuildAppOptions) {
-  const { db, processor, publishers } = opts
+  const { db, processor } = opts
 
   const app = Fastify({
     logger: getLoggerConfig({ service: 'payment-service', level: 'warn' }),
@@ -83,10 +81,7 @@ export async function buildApp(opts: IBuildAppOptions) {
     async () => ({ status: 'ok' }),
   )
 
-  app.decorate(
-    'paymentService',
-    createPaymentService({ db, processor, ...publishers }),
-  )
+  app.decorate('paymentService', createPaymentService({ db, processor }))
 
   await app.register(paymentRoutes)
 
