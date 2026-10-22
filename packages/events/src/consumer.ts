@@ -1,5 +1,6 @@
 import type { ConsumerConfig, Kafka } from 'kafkajs'
 import { EVENT_ID_HEADER } from './headers.js'
+import type { IKafkaLogTarget } from './kafka-log.js'
 import { type EventData, EventSchemas, type TopicName } from './schemas.js'
 
 export interface IEventMeta {
@@ -14,6 +15,7 @@ type Handler<T extends TopicName = TopicName> = (
 export function createConsumer(
   kafka: Kafka,
   groupId: string,
+  log: Pick<IKafkaLogTarget, 'error'>,
   config?: Omit<ConsumerConfig, 'groupId'>,
 ) {
   const consumer = kafka.consumer({ ...config, groupId })
@@ -43,13 +45,10 @@ export function createConsumer(
           const parsed = JSON.parse(message.value.toString())
           validated = EventSchemas[topic as TopicName].parse(parsed)
         } catch (err) {
-          // eslint-disable-next-line no-console
-          console.error('Skipping poison message', {
-            topic,
-            partition,
-            offset: message.offset,
-            error: err,
-          })
+          log.error(
+            { topic, partition, offset: message.offset, err },
+            'Skipping poison message',
+          )
           return
         }
 

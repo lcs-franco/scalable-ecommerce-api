@@ -1,3 +1,4 @@
+import { createLogger } from '@ecommerce/logger'
 import Fastify, { type FastifyInstance } from 'fastify'
 import { Redis } from 'ioredis'
 import { buildApp } from '../app.js'
@@ -66,6 +67,7 @@ export async function createTestApp(opts: {
   upstreamTimeoutMs?: number
 }) {
   const app = await buildApp({
+    logger: createLogger({ service: 'api-gateway', level: 'silent' }),
     redis: opts.redis,
     upstreams: opts.upstreams,
     jwtSecret: JWT_SECRET,

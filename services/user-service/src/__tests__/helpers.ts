@@ -1,3 +1,4 @@
+import { createLogger } from '@ecommerce/logger'
 import { asc, sql } from 'drizzle-orm'
 import { buildApp } from '../app.js'
 import { createDb } from '../db/index.js'
@@ -12,7 +13,10 @@ const TEST_DATABASE_URL =
 export async function createTestApp() {
   const { db, pool } = createDb(TEST_DATABASE_URL)
 
-  const app = await buildApp({ db })
+  const app = await buildApp({
+    db,
+    logger: createLogger({ service: 'user-service', level: 'silent' }),
+  })
 
   await app.ready()
 

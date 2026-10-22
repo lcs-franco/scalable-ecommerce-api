@@ -1,12 +1,19 @@
 /* eslint-disable no-console */
+import { createLogger } from '@ecommerce/logger'
 import { buildApp } from './app.js'
 import { config } from './config.js'
 import { createDb } from './db/index.js'
 
 async function main() {
+  const log = createLogger({
+    service: 'product-service',
+    level: config.LOG_LEVEL,
+  })
+
   const { db, pool } = createDb(config.DATABASE_URL)
 
   const app = await buildApp({
+    logger: log,
     db,
     internalServiceToken: config.INTERNAL_SERVICE_TOKEN,
   })

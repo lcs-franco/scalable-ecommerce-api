@@ -1,9 +1,12 @@
 /* eslint-disable no-console */
+import { createLogger } from '@ecommerce/logger'
 import { Redis } from 'ioredis'
 import { buildApp } from './app.js'
 import { config } from './config/env.js'
 
 async function main() {
+  const log = createLogger({ service: 'api-gateway', level: config.LOG_LEVEL })
+
   const redis = new Redis(config.REDIS_URL, {
     maxRetriesPerRequest: 1,
     commandTimeout: 500,
@@ -11,6 +14,7 @@ async function main() {
   await redis.ping()
 
   const app = await buildApp({
+    logger: log,
     redis,
     jwtSecret: config.JWT_SECRET,
     upstreams: {

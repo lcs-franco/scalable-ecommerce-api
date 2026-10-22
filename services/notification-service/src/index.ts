@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
-import { createConsumer } from '@ecommerce/events'
+import { createConsumer, createKafkaLogCreator } from '@ecommerce/events'
 import { createLogger } from '@ecommerce/logger'
-import { Kafka } from 'kafkajs'
+import { Kafka, logLevel } from 'kafkajs'
 import { buildApp } from './app.js'
 import { config } from './config/env.js'
 import { createDeduper } from './dedupe.js'
@@ -11,7 +11,10 @@ import { createRedis } from './redis.js'
 import { createNotificationService } from './services/notification.service.js'
 
 async function main() {
-  const log = createLogger({ service: 'notification-service' })
+  const log = createLogger({
+    service: 'notification-service',
+    level: config.LOG_LEVEL,
+  })
 
   const email = await createSmtpEmailProvider({
     host: config.SMTP_HOST,
@@ -23,14 +26,16 @@ async function main() {
   const kafka = new Kafka({
     clientId: 'notification-service',
     brokers: [config.KAFKA_BROKER],
+    logCreator: createKafkaLogCreator(log),
+    logLevel: logLevel.DEBUG,
   })
-  const consumer = createConsumer(kafka, 'notification-service')
+  const consumer = createConsumer(kafka, 'notification-service', log)
   await consumer.connect()
 
   const redis = createRedis(config.REDIS_URL)
   await redis.ping()
 
-  const app = await buildApp()
+  const app = await buildApp({ logger: log })
 
   await setupConsumers({
     consumer,

@@ -1,3 +1,4 @@
+import { createLogger } from '@ecommerce/logger'
 import { Redis } from 'ioredis'
 import { buildApp } from '../app.js'
 
@@ -10,6 +11,7 @@ export async function createTestApp() {
   const redis = new Redis(TEST_REDIS_URL, { maxRetriesPerRequest: 3 })
 
   const app = await buildApp({
+    logger: createLogger({ service: 'cart-service', level: 'silent' }),
     redis,
     productServiceUrl: 'http://localhost:19999',
     internalServiceToken: TEST_INTERNAL_TOKEN,

@@ -1,4 +1,5 @@
 import type { TopicName } from '@ecommerce/events'
+import { createLogger } from '@ecommerce/logger'
 import { asc, eq, sql } from 'drizzle-orm'
 import { buildApp } from '../app.js'
 import { createDb } from '../db/index.js'
@@ -44,7 +45,11 @@ export async function createTestApp() {
   const { db, pool } = createDb(TEST_DATABASE_URL)
   const fake = fakeProcessor()
 
-  const app = await buildApp({ db, processor: fake.processor })
+  const app = await buildApp({
+    db,
+    logger: createLogger({ service: 'payment-service', level: 'silent' }),
+    processor: fake.processor,
+  })
   await app.ready()
 
   return { app, db, pool, fake }

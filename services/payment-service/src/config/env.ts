@@ -1,4 +1,5 @@
 import 'dotenv/config'
+import { LOG_LEVELS } from '@ecommerce/logger'
 import { z } from 'zod'
 
 const envSchema = z.object({
@@ -9,6 +10,7 @@ const envSchema = z.object({
   STRIPE_SECRET_KEY: z
     .string()
     .startsWith('sk_test_', 'STRIPE_SECRET_KEY must be a test-mode key'),
+  LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
 })
 
 export const config = envSchema.parse(process.env)

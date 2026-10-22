@@ -1,23 +1,28 @@
-import { createProducer } from '@ecommerce/events'
+import { createKafkaLogCreator, createProducer } from '@ecommerce/events'
 import { createOutboxRelay } from '@ecommerce/events/outbox'
-import { Kafka } from 'kafkajs'
+import { createLogger } from '@ecommerce/logger'
+import { Kafka, logLevel } from 'kafkajs'
 import { buildApp } from './app.js'
 import { config } from './config.js'
 import { createDb } from './db/index.js'
 
 async function main() {
+  const log = createLogger({ service: 'user-service', level: config.LOG_LEVEL })
+
   const { db, pool } = createDb(config.DATABASE_URL)
 
   const kafka = new Kafka({
     clientId: 'user-service',
     brokers: [config.KAFKA_BROKER],
+    logCreator: createKafkaLogCreator(log),
+    logLevel: logLevel.DEBUG,
   })
   const producer = createProducer(kafka)
   await producer.connect()
 
-  const app = await buildApp({ db })
+  const app = await buildApp({ db, logger: log })
 
-  const relay = createOutboxRelay({ db, producer, log: app.log })
+  const relay = createOutboxRelay({ db, producer, log })
 
   const shutdown = async () => {
     await app.close()

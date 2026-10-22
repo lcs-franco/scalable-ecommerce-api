@@ -1,12 +1,24 @@
 import { randomUUID } from 'node:crypto'
 import { Kafka, logLevel } from 'kafkajs'
 import { createConsumer } from './consumer.js'
+import { createKafkaLogCreator, type IKafkaLogTarget } from './kafka-log.js'
 import { type EventData, Topics, type TopicName } from './schemas.js'
+
+const noop = () => {}
+
+const silentLog: IKafkaLogTarget = {
+  child: () => silentLog,
+  error: noop,
+  warn: noop,
+  info: noop,
+  debug: noop,
+}
 
 export function testKafka() {
   return new Kafka({
     clientId: 'test',
     brokers: [process.env.KAFKA_BROKER ?? 'localhost:9092'],
+    logCreator: createKafkaLogCreator(silentLog),
     logLevel: logLevel.ERROR,
   })
 }
@@ -48,11 +60,15 @@ async function pinGroupToEnd(kafka: Kafka, groupId: string) {
   await consumer.disconnect()
 }
 
-export async function createTestConsumer(kafka: Kafka) {
+export async function createTestConsumer(
+  kafka: Kafka,
+  log: Pick<IKafkaLogTarget, 'error'> = silentLog,
+) {
   const groupId = `test-${randomUUID()}`
   await pinGroupToEnd(kafka, groupId)
-  const consumer = createConsumer(kafka, groupId, FAST_FETCH)
+  const consumer = createConsumer(kafka, groupId, log, FAST_FETCH)
   await consumer.connect()
+
   return consumer
 }
 
