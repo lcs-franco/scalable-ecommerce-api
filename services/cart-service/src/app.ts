@@ -1,7 +1,6 @@
 import { authPlugin } from '@ecommerce/auth'
 import { DOCS_PREFIX, docsPlugin } from '@ecommerce/docs'
-import { getLoggerConfig } from '@ecommerce/logger'
-import Fastify, { FastifyError } from 'fastify'
+import Fastify, { type FastifyBaseLogger, FastifyError } from 'fastify'
 import {
   serializerCompiler,
   validatorCompiler,
@@ -14,6 +13,7 @@ import { createCartService } from './services/cart.service.js'
 import { createProductClient } from './services/product.client.js'
 
 interface IBuildAppOptions {
+  logger: FastifyBaseLogger
   redis: RedisClient
   productServiceUrl: string
   internalServiceToken: string
@@ -21,7 +21,7 @@ interface IBuildAppOptions {
 
 export async function buildApp(opts: IBuildAppOptions) {
   const app = Fastify({
-    logger: getLoggerConfig({ service: 'cart-service', level: 'warn' }),
+    loggerInstance: opts.logger,
   })
   app.setValidatorCompiler(validatorCompiler)
   app.setSerializerCompiler(serializerCompiler)

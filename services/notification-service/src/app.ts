@@ -1,9 +1,12 @@
-import { getLoggerConfig } from '@ecommerce/logger'
-import Fastify from 'fastify'
+import Fastify, { type FastifyBaseLogger } from 'fastify'
 
-export async function buildApp() {
+interface IBuildAppOptions {
+  logger: FastifyBaseLogger
+}
+
+export async function buildApp(opts: IBuildAppOptions) {
   const app = Fastify({
-    logger: getLoggerConfig({ service: 'notification-service', level: 'warn' }),
+    loggerInstance: opts.logger,
   })
 
   app.get('/health', async () => ({ status: 'ok' }))

@@ -1,6 +1,5 @@
-import { getLoggerConfig } from '@ecommerce/logger'
 import { randomUUID } from 'node:crypto'
-import Fastify, { FastifyError } from 'fastify'
+import Fastify, { type FastifyBaseLogger, FastifyError } from 'fastify'
 import type { Redis } from 'ioredis'
 import { ErrorCode, HttpError, RouteNotFound } from './errors/index.js'
 import { registerAccessCheck } from './hooks/access.js'
@@ -15,6 +14,7 @@ const RATE_LIMIT_WINDOW_MS = 60_000
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 interface IBuildAppOptions {
+  logger: FastifyBaseLogger
   redis: Redis
   upstreams: Upstreams
   jwtSecret: string
@@ -26,7 +26,7 @@ interface IBuildAppOptions {
 
 export async function buildApp(opts: IBuildAppOptions) {
   const app = Fastify({
-    logger: getLoggerConfig({ service: 'api-gateway', level: 'warn' }),
+    loggerInstance: opts.logger,
     trustProxy: opts.trustProxy ?? false,
     genReqId: (req) => {
       const incoming = req.headers['x-request-id']

@@ -53,10 +53,16 @@ describe('events against the broker', () => {
     await collector.stop()
   })
 
-  it('skips poison messages and keeps consuming', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const collector = await collectEvents(kafka, Topics.USER_REGISTERED)
+  it('skips poison messages, logging them, and keeps consuming', async () => {
+    const log = { error: vi.fn() }
+    const consumer = await createTestConsumer(kafka, log)
+    const received: unknown[] = []
     const valid = userRegistered()
+
+    await consumer.subscribe(Topics.USER_REGISTERED, async (data) => {
+      received.push(data)
+    })
+    await consumer.start()
 
     await rawProducer.send({
       topic: Topics.USER_REGISTERED,
@@ -67,13 +73,13 @@ describe('events against the broker', () => {
       ],
     })
 
-    await vi.waitFor(() => expect(collector.events).toContainEqual(valid), WAIT)
-    const skipped = consoleError.mock.calls.filter(
-      ([message]) => message === 'Skipping poison message',
+    await vi.waitFor(() => expect(received).toContainEqual(valid), WAIT)
+    const skipped = log.error.mock.calls.filter(
+      ([, message]) => message === 'Skipping poison message',
     )
     expect(skipped).toHaveLength(2)
-    await collector.stop()
-    consoleError.mockRestore()
+    expect(skipped[0][0]).toMatchObject({ topic: Topics.USER_REGISTERED })
+    await consumer.disconnect()
   })
 
   it('passes the event-id header to the handler as meta.eventId', async () => {

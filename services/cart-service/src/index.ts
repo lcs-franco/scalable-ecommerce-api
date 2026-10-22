@@ -1,12 +1,16 @@
 /* eslint-disable no-console */
+import { createLogger } from '@ecommerce/logger'
 import { buildApp } from './app.js'
 import { config } from './config.js'
 import { createRedis } from './redis.js'
 
 async function main() {
+  const log = createLogger({ service: 'cart-service', level: config.LOG_LEVEL })
+
   const redis = createRedis(config.REDIS_URL)
 
   const app = await buildApp({
+    logger: log,
     redis,
     productServiceUrl: config.PRODUCT_SERVICE_URL,
     internalServiceToken: config.INTERNAL_SERVICE_TOKEN,

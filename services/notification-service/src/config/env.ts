@@ -1,4 +1,5 @@
 import 'dotenv/config'
+import { LOG_LEVELS } from '@ecommerce/logger'
 import { z } from 'zod'
 
 const envSchema = z.object({
@@ -9,6 +10,7 @@ const envSchema = z.object({
   SMTP_HOST: z.string().default('localhost'),
   SMTP_PORT: z.coerce.number().default(1025),
   EMAIL_FROM: z.string().default('"E-commerce" <no-reply@ecommerce.local>'),
+  LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
 })
 
 export const config = envSchema.parse(process.env)

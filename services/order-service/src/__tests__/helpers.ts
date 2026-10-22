@@ -1,3 +1,4 @@
+import { createLogger } from '@ecommerce/logger'
 import type { TopicName } from '@ecommerce/events'
 import { asc, eq, sql } from 'drizzle-orm'
 import { buildApp } from '../app.js'
@@ -56,6 +57,7 @@ export async function createTestApp(overrides?: {
 
   const app = await buildApp({
     db,
+    logger: createLogger({ service: 'order-service', level: 'silent' }),
     cartClient: overrides?.cartClient ?? mockCartClient(),
     productClient: overrides?.productClient ?? mockProductClient(),
     createSaga: saga,

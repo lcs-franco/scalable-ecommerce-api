@@ -2,15 +2,29 @@ import pino, { type Logger, type LoggerOptions } from 'pino'
 
 export type { Logger } from 'pino'
 
+export const LOG_LEVELS = [
+  'fatal',
+  'error',
+  'warn',
+  'info',
+  'debug',
+  'trace',
+  'silent',
+] as const
+
+export type LogLevel = (typeof LOG_LEVELS)[number]
+
 export interface ICreateLoggerOptions {
   service: string
-  level?: string
+  level?: LogLevel
 }
 
-export function getLoggerConfig(opts: ICreateLoggerOptions): LoggerOptions {
+function getLoggerConfig(opts: ICreateLoggerOptions): LoggerOptions {
+  const level = opts.level ?? process.env.LOG_LEVEL ?? 'info'
+
   return {
     name: opts.service,
-    level: opts.level ?? process.env.LOG_LEVEL ?? 'info',
+    level,
     formatters: {
       level(label) {
         return { level: label }
@@ -18,7 +32,7 @@ export function getLoggerConfig(opts: ICreateLoggerOptions): LoggerOptions {
     },
     timestamp: pino.stdTimeFunctions.isoTime,
     transport:
-      process.env.NODE_ENV !== 'production'
+      process.env.NODE_ENV !== 'production' && level !== 'silent'
         ? { target: 'pino-pretty', options: { colorize: true } }
         : undefined,
   }

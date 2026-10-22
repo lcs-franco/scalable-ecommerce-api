@@ -1,3 +1,4 @@
+import { createLogger } from '@ecommerce/logger'
 import { sql } from 'drizzle-orm'
 import { buildApp } from '../app.js'
 import { createDb } from '../db/index.js'
@@ -13,6 +14,7 @@ export async function createTestApp() {
 
   const app = await buildApp({
     db,
+    logger: createLogger({ service: 'product-service', level: 'silent' }),
     internalServiceToken: 'test-internal-token',
   })
   await app.ready()

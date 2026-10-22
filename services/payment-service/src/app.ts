@@ -1,7 +1,6 @@
 import { authPlugin } from '@ecommerce/auth'
 import { DOCS_PREFIX, docsPlugin } from '@ecommerce/docs'
-import { getLoggerConfig } from '@ecommerce/logger'
-import Fastify, { FastifyError } from 'fastify'
+import Fastify, { type FastifyBaseLogger, FastifyError } from 'fastify'
 import {
   serializerCompiler,
   validatorCompiler,
@@ -25,6 +24,7 @@ declare module 'fastify' {
 }
 
 interface IBuildAppOptions {
+  logger: FastifyBaseLogger
   db: Db
   processor: IPaymentProcessor
 }
@@ -33,7 +33,7 @@ export async function buildApp(opts: IBuildAppOptions) {
   const { db, processor } = opts
 
   const app = Fastify({
-    logger: getLoggerConfig({ service: 'payment-service', level: 'warn' }),
+    loggerInstance: opts.logger,
   })
   app.setValidatorCompiler(validatorCompiler)
   app.setSerializerCompiler(serializerCompiler)

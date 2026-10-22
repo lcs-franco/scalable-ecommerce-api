@@ -48,12 +48,12 @@ docker compose run --rm product-seed
 
 ### Shared Packages (`packages/`)
 
-| Package             | Purpose                                                                                                                                                                                                                                            |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@ecommerce/auth`   | Fastify plugin wrapping `@fastify/jwt`. Routes opt out via `{ config: { skipAuth: true } }`; path prefixes via `publicPrefixes`. `{ config: { internal: true } }` routes require `x-internal-token` (plugin option `internalToken`) instead of JWT |
-| `@ecommerce/docs`   | `docsPlugin`: OpenAPI (Swagger + Scalar) at `DOCS_PREFIX` (`/docs`) from Zod route schemas; `schema: { hide: true }` or `config: { internal: true }` hides a route                                                                                 |
-| `@ecommerce/events` | Kafka topic constants, Zod event schemas, `createProducer`/`createConsumer` factories; transactional outbox (`outbox` table, `enqueue`, `createOutboxRelay`) under `@ecommerce/events/outbox`; test helpers under `@ecommerce/events/testing`      |
-| `@ecommerce/logger` | Pino logger factory with per-service configuration                                                                                                                                                                                                 |
+| Package             | Purpose                                                                                                                                                                                                                                                                                 |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@ecommerce/auth`   | Fastify plugin wrapping `@fastify/jwt`. Routes opt out via `{ config: { skipAuth: true } }`; path prefixes via `publicPrefixes`. `{ config: { internal: true } }` routes require `x-internal-token` (plugin option `internalToken`) instead of JWT                                      |
+| `@ecommerce/docs`   | `docsPlugin`: OpenAPI (Swagger + Scalar) at `DOCS_PREFIX` (`/docs`) from Zod route schemas; `schema: { hide: true }` or `config: { internal: true }` hides a route                                                                                                                      |
+| `@ecommerce/events` | Kafka topic constants, Zod event schemas, `createProducer`/`createConsumer` factories, `createKafkaLogCreator` (KafkaJS → Pino); transactional outbox (`outbox` table, `enqueue`, `createOutboxRelay`) under `@ecommerce/events/outbox`; test helpers under `@ecommerce/events/testing` |
+| `@ecommerce/logger` | `createLogger({ service, level })`: Pino instance (pino-pretty outside production)                                                                                                                                                                                                      |
 
 Packages must be built (`pnpm build`) before services can import them.
 
@@ -79,7 +79,7 @@ Packages must be built (`pnpm build`) before services can import them.
 
 ### Key Patterns
 
-- **Service factory pattern:** Each service exports `buildApp(deps)` taking injected dependencies (db, clients, processors). Entry point (`index.ts`) wires everything together.
+- **Service factory pattern:** Each service exports `buildApp(deps)` taking injected dependencies (logger, db, clients, processors). Entry point (`index.ts`) wires everything together: it creates one logger from `LOG_LEVEL` and shares it with Fastify (`loggerInstance`), the Kafka client (`logCreator: createKafkaLogCreator(log)`, `logLevel: DEBUG` so Pino does the filtering), consumers and the outbox relay.
 - **Saga pattern:** Order placement uses compensating transactions — `saga()` registers rollback functions and executes them in LIFO order on failure.
 - **Domain errors:** Services define `ApplicationError` subclasses with `statusCode` and `code`. The error handler maps `ZodError → 400`, `ApplicationError → custom status`, unknown → 500.
 - **Config validation:** Each service validates env vars at startup with Zod. Missing/invalid → process exits immediately.
@@ -97,7 +97,7 @@ Single Postgres container hosts 4 logical databases (`init-databases.sh` creates
 
 - **Framework:** Vitest with 30s timeout, serial file execution
 - **Location:** `services/*/src/__tests__/*.test.ts`
-- **Pattern:** `createTestApp()` helper builds Fastify instance with real Postgres/Redis. Events are asserted as rows in the service's `outbox` table (`outboxEvents()`). `cleanDb()` resets tables (including `outbox`) between tests.
+- **Pattern:** `createTestApp()` helper builds Fastify instance with real Postgres/Redis and a `silent` logger. Events are asserted as rows in the service's `outbox` table (`outboxEvents()`). `cleanDb()` resets tables (including `outbox`) between tests.
 - **Kafka tests:** `kafka.test.ts` (and notification's `consumers.test.ts`) run the outbox relay / `setupConsumers` against the real broker with `@ecommerce/events/testing` (`createTestConsumer`, `collectEvents`). Topics are shared, so filter received events by an id the test owns. Run them against the infra-only command above, not `pnpm dev`: the running services' consumer groups would also consume test messages.
 - **CI:** GitHub Actions runs typecheck → build → test. Postgres and Redis run as service containers; Kafka starts from `docker-compose.yml` (`kafka` + `kafka-init`).
 

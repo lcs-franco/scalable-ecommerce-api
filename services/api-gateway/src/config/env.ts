@@ -1,4 +1,5 @@
 import 'dotenv/config'
+import { LOG_LEVELS } from '@ecommerce/logger'
 import { z } from 'zod'
 
 const envSchema = z.object({
@@ -17,6 +18,7 @@ const envSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((v) => v === 'true'),
+  LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
 })
 
 export const config = envSchema.parse(process.env)
