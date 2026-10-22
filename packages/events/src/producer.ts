@@ -1,8 +1,10 @@
-import { Kafka } from 'kafkajs'
+import { Kafka, Partitioners } from 'kafkajs'
 import { EventSchemas, type EventData, type TopicName } from './schemas.js'
 
 export function createProducer(kafka: Kafka) {
-  const producer = kafka.producer()
+  const producer = kafka.producer({
+    createPartitioner: Partitioners.DefaultPartitioner,
+  })
 
   const connect = () => producer.connect()
   const disconnect = () => producer.disconnect()
