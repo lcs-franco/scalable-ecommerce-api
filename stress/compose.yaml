@@ -1,0 +1,10 @@
+name: ecommerce-stress
+
+# Port shifts (ports.env) let this run alongside `pnpm dev`; secrets come from the root .env
+include:
+  - path: [../docker/infra.yaml, infra.override.yaml]
+    env_file: [../.env, ports.env]
+  - path: ../docker/services.yaml
+    env_file: [../.env, ports.env]
+  - path: seed.yaml
+    env_file: [../.env, ports.env]

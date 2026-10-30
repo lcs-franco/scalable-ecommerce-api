@@ -21,7 +21,7 @@ services:
     build: { context: .., args: { SERVICE: api-gateway } }
     image: ecommerce/api-gateway
     ports:
-      - 3000:3000
+      - ${GATEWAY_PORT:-3000}:3000
     environment:
       PORT: 3000
       LOG_LEVEL: ${LOG_LEVEL:-info}
