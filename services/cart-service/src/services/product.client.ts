@@ -1,3 +1,5 @@
+import { requestIdHeaders } from '@ecommerce/http'
+
 export interface IProductInfo {
   id: string
   name: string
@@ -7,12 +9,15 @@ export interface IProductInfo {
 export function createProductClient(baseUrl: string) {
   async function fetchProducts(
     productIds: string[],
+    requestId?: string,
   ): Promise<Map<string, IProductInfo>> {
     const results = new Map<string, IProductInfo>()
 
     const fetches = productIds.map(async (id) => {
       try {
-        const res = await fetch(`${baseUrl}/products/${id}`)
+        const res = await fetch(`${baseUrl}/products/${id}`, {
+          headers: requestIdHeaders(requestId),
+        })
         if (res.ok) {
           const data = (await res.json()) as IProductInfo
           results.set(id, data)
