@@ -1,3 +1,4 @@
+import { ORDER_STATUSES } from '@ecommerce/events'
 import {
   integer,
   pgEnum,
@@ -7,13 +8,9 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core'
 
-export const orderStatusEnum = pgEnum('order_status', [
-  'pending',
-  'paid',
-  'shipped',
-  'delivered',
-  'cancelled',
-])
+export const orderStatusEnum = pgEnum('order_status', ORDER_STATUSES)
+
+export type OrderStatus = (typeof orderStatusEnum.enumValues)[number]
 
 export const orders = pgTable('orders', {
   id: uuid('id').defaultRandom().primaryKey(),

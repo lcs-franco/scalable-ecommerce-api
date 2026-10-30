@@ -6,17 +6,16 @@ import type { createCartClient } from '../clients/cart.client.js'
 import type { createProductClient } from '../clients/product.client.js'
 import { saga } from '../config/saga.js'
 import type { Db } from '../db/index.js'
-import { orderItems, orders } from '../db/schema.js'
+import { orderItems, orders, type OrderStatus } from '../db/schema.js'
 import { InvalidStatusTransition, OrderNotFound } from '../errors/index.js'
 
 export interface IListOptions {
   userId?: string
   limit: number
   offset: number
-  status?: string
+  status?: OrderStatus
 }
 
-type OrderStatus = 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled'
 type Order = typeof orders.$inferSelect
 
 const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
@@ -114,8 +113,9 @@ export function createOrderService(deps: IDeps) {
     if (opts.userId) {
       conditions.push(eq(orders.userId, opts.userId))
     }
+
     if (opts.status) {
-      conditions.push(eq(orders.status, opts.status as OrderStatus))
+      conditions.push(eq(orders.status, opts.status))
     }
 
     const where = conditions.length > 0 ? and(...conditions) : undefined
@@ -161,7 +161,8 @@ export function createOrderService(deps: IDeps) {
       .limit(1)
     if (!existing) throw new OrderNotFound()
 
-    const currentStatus = existing.status as OrderStatus
+    const currentStatus = existing.status
+
     if (!VALID_TRANSITIONS[currentStatus].includes(newStatus)) {
       throw new InvalidStatusTransition(currentStatus, newStatus)
     }
@@ -178,7 +179,8 @@ export function createOrderService(deps: IDeps) {
         .where(eq(orders.id, id))
         .limit(1)
       if (!latest) throw new OrderNotFound()
-      throw new InvalidStatusTransition(latest.status as OrderStatus, newStatus)
+
+      throw new InvalidStatusTransition(latest.status, newStatus)
     }
 
     return updated

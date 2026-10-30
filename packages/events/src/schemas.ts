@@ -10,6 +10,16 @@ export const Topics = {
 
 export type TopicName = (typeof Topics)[keyof typeof Topics]
 
+export const ORDER_STATUSES = [
+  'pending',
+  'paid',
+  'shipped',
+  'delivered',
+  'cancelled',
+] as const
+
+export type OrderStatus = (typeof ORDER_STATUSES)[number]
+
 export const UserRegisteredSchema = z.object({
   userId: z.string().uuid(),
   email: z.string().email(),
@@ -57,7 +67,7 @@ export const PaymentFailedSchema = z
 export const OrderStatusChangedSchema = z
   .object({
     orderId: z.string().uuid(),
-    status: z.enum(['pending', 'paid', 'shipped', 'delivered', 'cancelled']),
+    status: z.enum(ORDER_STATUSES),
   })
   .merge(RecipientSchema)
 
