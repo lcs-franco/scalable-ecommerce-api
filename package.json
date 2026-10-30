@@ -8,6 +8,8 @@
   "scripts": {
     "dev": "docker compose -f compose.yaml -f docker/dev.yaml up --build -d",
     "dev:down": "docker compose -f compose.yaml -f docker/dev.yaml down",
+    "infra": "docker compose -f docker/infra.yaml up -d --wait postgres redis kafka mailpit && docker compose -f docker/infra.yaml run --rm kafka-init",
+    "infra:down": "docker compose -f docker/infra.yaml down",
     "build": "pnpm -r run build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --fix && prettier . --write",
