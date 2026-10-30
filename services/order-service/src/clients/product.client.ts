@@ -1,3 +1,4 @@
+import { requestIdHeaders } from '@ecommerce/http'
 import { ErrorCode, InsufficientStock } from '../errors/index.js'
 import { readUpstreamError } from './upstream.js'
 
@@ -19,12 +20,16 @@ interface IProductClientOptions {
 }
 
 export function createProductClient(opts: IProductClientOptions) {
-  async function validateOrder(items: IOrderItem[]): Promise<IValidatedItem[]> {
+  async function validateOrder(
+    items: IOrderItem[],
+    requestId?: string,
+  ): Promise<IValidatedItem[]> {
     const res = await fetch(`${opts.baseUrl}/products/validate-order`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-internal-token': opts.internalServiceToken,
+        ...requestIdHeaders(requestId),
       },
       body: JSON.stringify({ items }),
     })
@@ -41,13 +46,17 @@ export function createProductClient(opts: IProductClientOptions) {
     return body.items
   }
 
-  async function restoreStock(items: IOrderItem[]): Promise<void> {
+  async function restoreStock(
+    items: IOrderItem[],
+    requestId?: string,
+  ): Promise<void> {
     try {
       await fetch(`${opts.baseUrl}/products/restore-stock`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-internal-token': opts.internalServiceToken,
+          ...requestIdHeaders(requestId),
         },
         body: JSON.stringify({ items }),
       })
@@ -59,6 +68,7 @@ export function createProductClient(opts: IProductClientOptions) {
   async function restoreOrderStock(
     orderId: string,
     items: IOrderItem[],
+    requestId?: string,
   ): Promise<void> {
     const res = await fetch(
       `${opts.baseUrl}/products/orders/${orderId}/restore-stock`,
@@ -67,6 +77,7 @@ export function createProductClient(opts: IProductClientOptions) {
         headers: {
           'Content-Type': 'application/json',
           'x-internal-token': opts.internalServiceToken,
+          ...requestIdHeaders(requestId),
         },
         body: JSON.stringify({ items }),
       },

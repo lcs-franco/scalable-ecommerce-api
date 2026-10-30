@@ -76,6 +76,8 @@ Packages must be built (`pnpm build`) before services can import them.
 
 **Synchronous (HTTP):** Service-to-service calls use `x-internal-token` header (shared secret from `INTERNAL_SERVICE_TOKEN` env var), not JWT. The receiving route declares `config: { internal: true }` and `authPlugin` checks the token. Client factories live in each service (e.g., `createProductClient`, `createCartClient`).
 
+**Request id:** every app (gateway included) passes `genReqId: genRequestId` to Fastify and calls `registerRequestId(app)` (both from `@ecommerce/http`): a valid incoming UUID `x-request-id` becomes `request.id` (the `reqId` in logs) and is echoed back, otherwise a new one is generated. Client methods take an optional trailing `requestId` (routes pass `request.id`) and send it with `requestIdHeaders(requestId)`.
+
 **Asynchronous (Kafka):** Events use Zod-validated schemas from `@ecommerce/events`. Topics: `user.registered`, `order.placed`, `order.status-changed`, `payment.confirmed`, `payment.failed`. Poison messages (bad JSON/schema) are logged and skipped, not retried. Services never publish from a request: they `enqueue(tx, topic, data, { key })` into their own `outbox` table in the same transaction as the state change, and a relay in the service process publishes it (at-least-once, message key = entity id, header `event-id` = outbox row id). The relay also purges published rows after 7 days (unpublished rows are never deleted). An adopting service re-exports `outbox` from its `db/schema.ts` so `db:generate` migrates it.
 
 ### Key Patterns

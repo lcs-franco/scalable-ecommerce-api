@@ -123,4 +123,52 @@ describe('service clients', () => {
       },
     )
   })
+
+  describe('request id', () => {
+    const requestId = '4f1c2a9e-8b3d-4e5f-9a6b-7c8d9e0f1a2b'
+    const items = [{ productId: 'product-1', quantity: 2 }]
+    const opts = () => ({ baseUrl, internalServiceToken: 'token' })
+
+    it.each([
+      [
+        'cart checkout',
+        () => createCartClient(opts()).checkout('user-1', requestId),
+      ],
+      [
+        'cart restore',
+        () => createCartClient(opts()).restore(items, 'jwt', requestId),
+      ],
+      [
+        'product validateOrder',
+        () => createProductClient(opts()).validateOrder(items, requestId),
+      ],
+      [
+        'product restoreStock',
+        () => createProductClient(opts()).restoreStock(items, requestId),
+      ],
+      [
+        'product restoreOrderStock',
+        () =>
+          createProductClient(opts()).restoreOrderStock(
+            'order-1',
+            items,
+            requestId,
+          ),
+      ],
+    ])('should forward x-request-id on %s', async (_name, call) => {
+      upstreamReplies(200, { items: [] })
+
+      await call()
+
+      expect(lastHeaders['x-request-id']).toBe(requestId)
+    })
+
+    it('should not send x-request-id when there is none', async () => {
+      upstreamReplies(200, { items: [] })
+
+      await createProductClient(opts()).validateOrder(items)
+
+      expect(lastHeaders['x-request-id']).toBeUndefined()
+    })
+  })
 })

@@ -477,6 +477,9 @@ importers:
       '@ecommerce/events':
         specifier: workspace:*
         version: link:../../packages/events
+      '@ecommerce/http':
+        specifier: workspace:*
+        version: link:../../packages/http
       '@ecommerce/logger':
         specifier: workspace:*
         version: link:../../packages/logger

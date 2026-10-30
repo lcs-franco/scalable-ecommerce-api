@@ -4,3 +4,9 @@ export { ApplicationError } from './errors/ApplicationError.js'
 export { Forbidden } from './errors/Forbidden.js'
 export { HttpError } from './errors/HttpError.js'
 export { Unauthorized } from './errors/Unauthorized.js'
+export {
+  genRequestId,
+  registerRequestId,
+  REQUEST_ID_HEADER,
+  requestIdHeaders,
+} from './requestId.js'

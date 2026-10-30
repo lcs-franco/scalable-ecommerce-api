@@ -65,7 +65,7 @@ export async function cartRoutes(fastify: FastifyInstance, deps: IDeps) {
     }
 
     const productIds = items.map((i) => i.productId)
-    const products = await productClient.fetchProducts(productIds)
+    const products = await productClient.fetchProducts(productIds, request.id)
     return reply.send(cartService.enrichItems(items, products))
   })
 
