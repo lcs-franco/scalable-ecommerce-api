@@ -1,5 +1,9 @@
-import { randomUUID } from 'node:crypto'
-import { CommonErrorCode, HttpError } from '@ecommerce/http'
+import {
+  CommonErrorCode,
+  genRequestId,
+  HttpError,
+  registerRequestId,
+} from '@ecommerce/http'
 import Fastify, { type FastifyBaseLogger, FastifyError } from 'fastify'
 import type { Redis } from 'ioredis'
 import { RouteNotFound } from './errors/index.js'
@@ -12,7 +16,6 @@ import type { Upstreams } from './routes/table.js'
 import './types.js'
 
 const RATE_LIMIT_WINDOW_MS = 60_000
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 interface IBuildAppOptions {
   logger: FastifyBaseLogger
@@ -29,13 +32,7 @@ export async function buildApp(opts: IBuildAppOptions) {
   const app = Fastify({
     loggerInstance: opts.logger,
     trustProxy: opts.trustProxy ?? false,
-    genReqId: (req) => {
-      const incoming = req.headers['x-request-id']
-
-      return typeof incoming === 'string' && UUID.test(incoming)
-        ? incoming
-        : randomUUID()
-    },
+    genReqId: genRequestId,
   })
 
   app.setErrorHandler((error: FastifyError | HttpError, _request, reply) => {
@@ -58,9 +55,7 @@ export async function buildApp(opts: IBuildAppOptions) {
     throw new RouteNotFound(request.method, request.url)
   })
 
-  app.addHook('onRequest', async (request, reply) => {
-    reply.header('x-request-id', request.id)
-  })
+  registerRequestId(app)
 
   // Hook order is the pipeline: identity → rate limit → access → proxy
   await registerIdentity(app, { jwtSecret: opts.jwtSecret })
