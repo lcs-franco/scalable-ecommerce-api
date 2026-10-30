@@ -1,5 +1,5 @@
+import { ApplicationError } from '@ecommerce/http'
 import { ErrorCode } from '../ErrorCode.js'
-import { ApplicationError } from './ApplicationError.js'
 
 export class InvalidCredentials extends ApplicationError {
   public override statusCode = 401

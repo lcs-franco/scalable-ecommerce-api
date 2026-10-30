@@ -1,6 +1,5 @@
-export { ApplicationError } from './application/ApplicationError.js'
+export { ApplicationError } from '@ecommerce/http'
 export { CartEmpty } from './application/CartEmpty.js'
-export { Forbidden } from './application/Forbidden.js'
 export { InsufficientStock } from './application/InsufficientStock.js'
 export { InvalidStatusTransition } from './application/InvalidStatusTransition.js'
 export { OrderNotFound } from './application/OrderNotFound.js'

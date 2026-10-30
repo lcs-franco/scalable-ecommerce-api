@@ -1,7 +1,7 @@
 import '@ecommerce/auth'
+import { Forbidden } from '@ecommerce/http'
 import type { FastifyInstance, FastifyPluginOptions } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
-import { Forbidden } from '../../errors/index.js'
 import type { createProductService } from '../../services/product.service.js'
 import {
   CreateProductBodySchema,
@@ -18,7 +18,7 @@ interface IDeps extends FastifyPluginOptions {
 }
 
 function requireAdmin(role: string) {
-  if (role !== 'admin') throw new Forbidden()
+  if (role !== 'admin') throw new Forbidden('Admin access required')
 }
 
 export async function productRoutes(fastify: FastifyInstance, deps: IDeps) {

@@ -1,7 +1,7 @@
 import '@ecommerce/auth'
+import { Forbidden } from '@ecommerce/http'
 import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
-import { Forbidden } from '../../errors/index.js'
 import { PaymentOrderParamsSchema } from './schemas/payment.schemas.js'
 
 export async function paymentRoutes(fastify: FastifyInstance) {
@@ -21,6 +21,7 @@ export async function paymentRoutes(fastify: FastifyInstance) {
       ) {
         throw new Forbidden()
       }
+
       return reply.send(payment)
     },
   )

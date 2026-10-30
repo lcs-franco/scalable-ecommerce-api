@@ -1,7 +1,7 @@
 import '@ecommerce/auth'
+import { Forbidden } from '@ecommerce/http'
 import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
-import { Forbidden } from '../../errors/index.js'
 import {
   ListOrdersQuerySchema,
   OrderParamsSchema,
@@ -10,7 +10,7 @@ import {
 } from './schemas/order.schemas.js'
 
 function requireAdmin(role: string) {
-  if (role !== 'admin') throw new Forbidden()
+  if (role !== 'admin') throw new Forbidden('Admin access required')
 }
 
 export async function orderRoutes(fastify: FastifyInstance) {
@@ -52,12 +52,14 @@ export async function orderRoutes(fastify: FastifyInstance) {
     { schema: { params: OrderParamsSchema } },
     async (request, reply) => {
       const order = await app.orderService.findById(request.params.id)
+
       if (
         request.user.role !== 'admin' &&
         order.userId !== request.user.userId
       ) {
-        throw new Forbidden()
+        throw new Forbidden('Admin access required')
       }
+
       return reply.send(order)
     },
   )

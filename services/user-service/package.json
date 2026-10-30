@@ -13,6 +13,7 @@
     "@ecommerce/auth": "workspace:*",
     "@ecommerce/docs": "workspace:*",
     "@ecommerce/events": "workspace:*",
+    "@ecommerce/http": "workspace:*",
     "@ecommerce/logger": "workspace:*",
     "@fastify/jwt": "^9.1.0",
     "bcrypt": "^5.1.1",

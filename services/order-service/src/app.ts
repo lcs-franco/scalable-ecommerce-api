@@ -1,17 +1,16 @@
 import { authPlugin } from '@ecommerce/auth'
 import { DOCS_PREFIX, docsPlugin } from '@ecommerce/docs'
-import Fastify, { type FastifyBaseLogger, FastifyError } from 'fastify'
+import { registerErrorHandler } from '@ecommerce/http'
+import Fastify, { type FastifyBaseLogger } from 'fastify'
 import {
   serializerCompiler,
   validatorCompiler,
 } from 'fastify-type-provider-zod'
-import { ZodError } from 'zod'
 import type { createCartClient } from './clients/cart.client.js'
 import type { createProductClient } from './clients/product.client.js'
 import { saga } from './config/saga.js'
 import type { Db } from './db/index.js'
 import { runMigrations } from './db/migrate.js'
-import { ApplicationError, ErrorCode } from './errors/index.js'
 import { orderRoutes } from './routes/orders/order.routes.js'
 import {
   createOrderService,
@@ -44,37 +43,7 @@ export async function buildApp(opts: IBuildAppOptions) {
 
   await runMigrations(db)
 
-  app.setErrorHandler(
-    (error: FastifyError | ApplicationError, _request, reply) => {
-      if (error instanceof ZodError) {
-        return reply.status(400).send({
-          error: ErrorCode.VALIDATION,
-          message: error.message,
-        })
-      }
-
-      if (error instanceof ApplicationError) {
-        return reply.status(error.statusCode).send({
-          error: error.code,
-          message: error.message,
-        })
-      }
-
-      const statusCode = error.statusCode ?? 500
-      if (statusCode < 500) {
-        return reply.status(statusCode).send({
-          error: error.message,
-          message: error.message,
-        })
-      }
-
-      app.log.error(error)
-      return reply.status(500).send({
-        error: ErrorCode.INTERNAL_SERVER_ERROR,
-        message: 'Internal server error',
-      })
-    },
-  )
+  registerErrorHandler(app)
 
   await app.register(docsPlugin, { title: 'order-service' })
   await app.register(authPlugin, { publicPrefixes: [DOCS_PREFIX] })
