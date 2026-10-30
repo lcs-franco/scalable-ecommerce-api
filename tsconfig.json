@@ -8,6 +8,7 @@
       "@ecommerce/events": ["./packages/events/src/index.ts"],
       "@ecommerce/events/testing": ["./packages/events/src/testing.ts"],
       "@ecommerce/events/outbox": ["./packages/events/src/outbox.ts"],
+      "@ecommerce/http": ["./packages/http/src/index.ts"],
       "@ecommerce/logger": ["./packages/logger/src/index.ts"]
     }
   },

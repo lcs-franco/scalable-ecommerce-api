@@ -364,6 +364,19 @@ importers:
         specifier: ^2.1.9
         version: 2.1.9(@types/node@22.20.2)
 
+  packages/http:
+    dependencies:
+      fastify:
+        specifier: ^5.3.3
+        version: 5.12.4
+      zod:
+        specifier: ^3.24.0
+        version: 3.25.76
+    devDependencies:
+      vitest:
+        specifier: ^2.1.9
+        version: 2.1.9(@types/node@22.20.2)
+
   packages/logger:
     dependencies:
       pino:
@@ -375,6 +388,9 @@ importers:
 
   services/api-gateway:
     dependencies:
+      '@ecommerce/http':
+        specifier: workspace:*
+        version: link:../../packages/http
       '@ecommerce/logger':
         specifier: workspace:*
         version: link:../../packages/logger
@@ -418,6 +434,9 @@ importers:
       '@ecommerce/docs':
         specifier: workspace:*
         version: link:../../packages/docs
+      '@ecommerce/http':
+        specifier: workspace:*
+        version: link:../../packages/http
       '@ecommerce/logger':
         specifier: workspace:*
         version: link:../../packages/logger
@@ -522,6 +541,9 @@ importers:
       '@ecommerce/events':
         specifier: workspace:*
         version: link:../../packages/events
+      '@ecommerce/http':
+        specifier: workspace:*
+        version: link:../../packages/http
       '@ecommerce/logger':
         specifier: workspace:*
         version: link:../../packages/logger
@@ -580,6 +602,9 @@ importers:
       '@ecommerce/events':
         specifier: workspace:*
         version: link:../../packages/events
+      '@ecommerce/http':
+        specifier: workspace:*
+        version: link:../../packages/http
       '@ecommerce/logger':
         specifier: workspace:*
         version: link:../../packages/logger
@@ -638,6 +663,9 @@ importers:
       '@ecommerce/docs':
         specifier: workspace:*
         version: link:../../packages/docs
+      '@ecommerce/http':
+        specifier: workspace:*
+        version: link:../../packages/http
       '@ecommerce/logger':
         specifier: workspace:*
         version: link:../../packages/logger
@@ -693,6 +721,9 @@ importers:
       '@ecommerce/events':
         specifier: workspace:*
         version: link:../../packages/events
+      '@ecommerce/http':
+        specifier: workspace:*
+        version: link:../../packages/http
       '@ecommerce/logger':
         specifier: workspace:*
         version: link:../../packages/logger

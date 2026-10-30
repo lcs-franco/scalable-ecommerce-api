@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto'
+import { CommonErrorCode, HttpError } from '@ecommerce/http'
 import Fastify, { type FastifyBaseLogger, FastifyError } from 'fastify'
 import type { Redis } from 'ioredis'
-import { ErrorCode, HttpError, RouteNotFound } from './errors/index.js'
+import { RouteNotFound } from './errors/index.js'
 import { registerAccessCheck } from './hooks/access.js'
 import { registerIdentity } from './hooks/identity.js'
 import { registerProxy } from './hooks/proxy.js'
@@ -30,6 +31,7 @@ export async function buildApp(opts: IBuildAppOptions) {
     trustProxy: opts.trustProxy ?? false,
     genReqId: (req) => {
       const incoming = req.headers['x-request-id']
+
       return typeof incoming === 'string' && UUID.test(incoming)
         ? incoming
         : randomUUID()
@@ -45,8 +47,9 @@ export async function buildApp(opts: IBuildAppOptions) {
     }
 
     app.log.error(error)
+
     return reply.status(500).send({
-      error: ErrorCode.INTERNAL_SERVER_ERROR,
+      error: CommonErrorCode.INTERNAL_SERVER_ERROR,
       message: 'Internal server error',
     })
   })

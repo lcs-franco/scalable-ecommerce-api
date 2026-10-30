@@ -1,4 +1,3 @@
-export { ApplicationError } from './application/ApplicationError.js'
 export { EmailAlreadyInUse } from './application/EmailAlreadyInUse.js'
 export { InvalidCredentials } from './application/InvalidCredentials.js'
 export { InvalidRefreshToken } from './application/InvalidRefreshToken.js'

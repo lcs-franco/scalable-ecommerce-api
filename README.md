@@ -187,6 +187,7 @@ packages/
   auth/                 → Fastify JWT plugin, internal-token routes
   docs/                 → OpenAPI (Swagger + Scalar) from Zod route schemas
   events/               → topics, Zod event schemas, producer/consumer, outbox, test helpers
+  http/                 → shared error handler, ApplicationError / HttpError bases
   logger/               → Pino logger factory
 
 infra/postgres/         → script that creates the service databases

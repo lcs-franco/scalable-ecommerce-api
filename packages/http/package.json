@@ -1,0 +1,27 @@
+{
+  "name": "@ecommerce/http",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "fastify": "^5.3.3",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.9"
+  }
+}

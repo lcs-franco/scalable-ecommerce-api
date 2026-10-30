@@ -12,6 +12,7 @@
   "dependencies": {
     "@ecommerce/auth": "workspace:*",
     "@ecommerce/docs": "workspace:*",
+    "@ecommerce/http": "workspace:*",
     "@ecommerce/logger": "workspace:*",
     "@fastify/jwt": "^9.1.0",
     "dotenv": "^16.4.7",

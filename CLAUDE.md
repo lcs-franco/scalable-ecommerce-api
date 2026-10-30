@@ -44,7 +44,7 @@ docker compose run --rm product-seed
 
 ## Architecture
 
-**Monorepo** using pnpm workspaces with four shared packages and seven microservices.
+**Monorepo** using pnpm workspaces with five shared packages and seven microservices.
 
 ### Shared Packages (`packages/`)
 
@@ -53,6 +53,7 @@ docker compose run --rm product-seed
 | `@ecommerce/auth`   | Fastify plugin wrapping `@fastify/jwt`. Routes opt out via `{ config: { skipAuth: true } }`; path prefixes via `publicPrefixes`. `{ config: { internal: true } }` routes require `x-internal-token` (plugin option `internalToken`) instead of JWT                                      |
 | `@ecommerce/docs`   | `docsPlugin`: OpenAPI (Swagger + Scalar) at `DOCS_PREFIX` (`/docs`) from Zod route schemas; `schema: { hide: true }` or `config: { internal: true }` hides a route                                                                                                                      |
 | `@ecommerce/events` | Kafka topic constants, Zod event schemas, `createProducer`/`createConsumer` factories, `createKafkaLogCreator` (KafkaJS → Pino); transactional outbox (`outbox` table, `enqueue`, `createOutboxRelay`) under `@ecommerce/events/outbox`; test helpers under `@ecommerce/events/testing` |
+| `@ecommerce/http`   | `registerErrorHandler(app)` (the shared Fastify error handler), `ApplicationError` base for domain errors, `HttpError` base with `Unauthorized` / `Forbidden`, and `CommonErrorCode` (`VALIDATION`, `UNAUTHORIZED`, `FORBIDDEN`, `INTERNAL_SERVER_ERROR`)                               |
 | `@ecommerce/logger` | `createLogger({ service, level })`: Pino instance (pino-pretty outside production)                                                                                                                                                                                                      |
 
 Packages must be built (`pnpm build`) before services can import them.
@@ -81,7 +82,7 @@ Packages must be built (`pnpm build`) before services can import them.
 
 - **Service factory pattern:** Each service exports `buildApp(deps)` taking injected dependencies (logger, db, clients, processors). Entry point (`index.ts`) wires everything together: it creates one logger from `LOG_LEVEL` and shares it with Fastify (`loggerInstance`), the Kafka client (`logCreator: createKafkaLogCreator(log)`, `logLevel: DEBUG` so Pino does the filtering), consumers and the outbox relay.
 - **Saga pattern:** Order placement uses compensating transactions — `saga()` registers rollback functions and executes them in LIFO order on failure.
-- **Domain errors:** Services define `ApplicationError` subclasses with `statusCode` and `code`. The error handler maps `ZodError → 400`, `ApplicationError → custom status`, unknown → 500.
+- **Domain errors:** Services define subclasses of `ApplicationError` (from `@ecommerce/http`) with `statusCode` and a domain `code` from their own `ErrorCode`; HTTP errors (`Unauthorized`, `Forbidden`) come from the package. `registerErrorHandler(app)` maps `ZodError → 400`, `ApplicationError` / `HttpError → statusCode`, Fastify errors below 500 keep their status, unknown → 500. The api-gateway keeps its own handler (`HttpError → statusCode`, everything else → 500) on the package's `HttpError` and `CommonErrorCode`.
 - **Config validation:** Each service validates env vars at startup with Zod. Missing/invalid → process exits immediately.
 - **Health:** every service exposes `GET /health` (liveness, `skipAuth`, hidden from docs). Startup is fail-fast (migrations and Kafka connect run before `listen`), so compose uses it as the readiness signal.
 

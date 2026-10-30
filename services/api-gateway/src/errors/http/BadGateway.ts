@@ -1,5 +1,5 @@
+import { HttpError } from '@ecommerce/http'
 import { ErrorCode } from '../ErrorCode.js'
-import { HttpError } from './HttpError.js'
 
 export class BadGateway extends HttpError {
   public override statusCode = 502
