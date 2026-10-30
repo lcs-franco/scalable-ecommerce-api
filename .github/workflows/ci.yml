@@ -53,29 +53,6 @@ jobs:
     name: Test
     needs: [typecheck, build]
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: ecommerce
-          POSTGRES_PASSWORD: ecommerce_dev
-          POSTGRES_DB: user_db
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U ecommerce"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 5
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -88,31 +65,14 @@ jobs:
           node-version: 22
           cache: pnpm
 
-      # Boots while dependencies install. Compose requires a .env.
-      - name: Start Kafka
-        run: |
-          cp .env.example .env
-          docker compose up -d kafka
+      # Boots while dependencies install
+      - name: Start infrastructure
+        run: docker compose -f docker/infra.yaml up -d
 
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm run build
 
-      # kafka-init has no healthcheck, so `up --wait` would not wait for the topics.
-      - name: Create Kafka topics
-        run: |
-          docker compose up -d --wait kafka
-          docker compose run --rm kafka-init
-
-      - name: Create test databases
-        run: |
-          psql -h localhost -U ecommerce -d user_db -c "CREATE DATABASE product_db;"
-          psql -h localhost -U ecommerce -d user_db -c "CREATE DATABASE order_db;"
-          psql -h localhost -U ecommerce -d user_db -c "CREATE DATABASE payment_db;"
-        env:
-          PGPASSWORD: ecommerce_dev
+      - run: pnpm infra
 
       - run: pnpm test
-        env:
-          REDIS_URL: redis://localhost:6379
-          KAFKA_BROKER: localhost:9092
