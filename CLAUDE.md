@@ -14,8 +14,11 @@ docker compose up --build
 # Daily development: same, with hot reload of services/*/src (packages/* changes need a rebuild)
 pnpm dev
 
-# Infrastructure only, enough for the tests (Postgres 16, Redis 7, Kafka KRaft + topics, Mailpit)
-docker compose up -d postgres redis kafka kafka-init mailpit
+# Infrastructure only, enough for the tests (Postgres 16, Redis 7, Kafka KRaft + topics, Mailpit; no .env needed)
+pnpm infra
+
+# Stop the infrastructure (keeps volumes)
+pnpm infra:down
 
 # Build shared packages (tests on the host import their dist)
 pnpm build
@@ -88,7 +91,7 @@ Packages must be built (`pnpm build`) before services can import them.
 
 ### Containers
 
-One root `Dockerfile` builds every service (`--build-arg SERVICE=<dir>`): `tsc` → `dist/`, then `pnpm deploy --prod --legacy` into a self-contained folder run with `node dist/index.js`. Target `dev` runs `tsx watch` for `docker-compose.dev.yml`. Each service's `package.json` `files` (`dist`, plus `drizzle` where present) decides what the deploy copies, as do the `files` of `packages/*`. In `docker-compose.yml`, services get env through `environment:` with internal hostnames; secrets come from the root `.env`. `kafka-init` creates the topics (keep its list in sync with `Topics`); `user-seed` / `product-seed` run once after their service is healthy. A new service needs an entry in compose (and in the dev override).
+One root `Dockerfile` builds every service (`--build-arg SERVICE=<dir>`): `tsc` → `dist/`, then `pnpm deploy --prod --legacy` into a self-contained folder run with `node dist/index.js`. Target `dev` runs `tsx watch` for `docker/dev.yaml`. Each service's `package.json` `files` (`dist`, plus `drizzle` where present) decides what the deploy copies, as do the `files` of `packages/*`. The root `compose.yaml` only sets the project name (`ecommerce`) and includes `docker/infra.yaml` (Postgres, Redis, Kafka, `kafka-init`, Mailpit; `name: ecommerce` too, so both share containers and volumes) and `docker/services.yaml` (services and seeds). Included files resolve relative paths against `docker/`; `docker/dev.yaml`, applied with `-f`, resolves them against the root. In `docker/services.yaml`, services get env through `environment:` with internal hostnames; secrets come from the root `.env`. `kafka-init` creates the topics (keep its list in sync with `Topics`); `user-seed` / `product-seed` run once after their service is healthy. A new service needs an entry in `docker/services.yaml` (and in `docker/dev.yaml`).
 
 ### Database
 
@@ -99,12 +102,12 @@ Single Postgres container hosts 4 logical databases (`init-databases.sh` creates
 - **Framework:** Vitest with 30s timeout, serial file execution
 - **Location:** `services/*/src/__tests__/*.test.ts`
 - **Pattern:** `createTestApp()` helper builds Fastify instance with real Postgres/Redis and a `silent` logger. Events are asserted as rows in the service's `outbox` table (`outboxEvents()`). `cleanDb()` resets tables (including `outbox`) between tests.
-- **Kafka tests:** `kafka.test.ts` (and notification's `consumers.test.ts`) run the outbox relay / `setupConsumers` against the real broker with `@ecommerce/events/testing` (`createTestConsumer`, `collectEvents`). Topics are shared, so filter received events by an id the test owns. Run them against the infra-only command above, not `pnpm dev`: the running services' consumer groups would also consume test messages.
-- **CI:** GitHub Actions runs typecheck → build → test. Postgres and Redis run as service containers; Kafka starts from `docker-compose.yml` (`kafka` + `kafka-init`).
+- **Kafka tests:** `kafka.test.ts` (and notification's `consumers.test.ts`) run the outbox relay / `setupConsumers` against the real broker with `@ecommerce/events/testing` (`createTestConsumer`, `collectEvents`). Topics are shared, so filter received events by an id the test owns. Run them against `pnpm infra`, not `pnpm dev`: the running services' consumer groups would also consume test messages.
+- **CI:** GitHub Actions runs typecheck → build → test. The test job starts `docker/infra.yaml` while dependencies install, then `pnpm infra` waits for health and creates the topics.
 
 ## Environment Setup
 
-Copy the root `.env.example` to `.env` and set `STRIPE_SECRET_KEY`. It is the only env file: compose reads it and passes each service its variables through `environment:` (internal hostnames are fixed in `docker-compose.yml`). Services do not run on the host; tests use defaults from their `__tests__/helpers.ts`.
+Copy the root `.env.example` to `.env` and set `STRIPE_SECRET_KEY`. It is the only env file: compose reads it and passes each service its variables through `environment:` (internal hostnames are fixed in `docker/services.yaml`). Services do not run on the host; tests use defaults from their `__tests__/helpers.ts`. `docker/infra.yaml` needs no `.env` (its Postgres defaults match `.env.example`); run on its own it reads `docker/.env`, not the root one, so root overrides such as `POSTGRES_PORT` apply only through `compose.yaml`.
 
 ## Issue Tracking
 
