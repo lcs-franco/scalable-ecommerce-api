@@ -4,6 +4,7 @@ export { createKafkaLogCreator, type IKafkaLogTarget } from './kafka-log.js'
 export { createProducer } from './producer.js'
 export {
   EventSchemas,
+  ORDER_STATUSES,
   OrderPlacedSchema,
   OrderStatusChangedSchema,
   PaymentConfirmedSchema,
@@ -12,5 +13,6 @@ export {
   Topics,
   UserRegisteredSchema,
   type EventData,
+  type OrderStatus,
   type TopicName,
 } from './schemas.js'
