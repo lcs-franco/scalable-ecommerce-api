@@ -150,7 +150,7 @@ A message that is not JSON or fails its Zod schema is logged with topic, partiti
 
 ### Fail-fast startup and health-based readiness
 
-Every service validates its environment with Zod and exits on a missing or invalid variable. Migrations and Kafka connections run before `listen`, so once `GET /health` answers, the service is ready. Compose uses that as the healthcheck and starts dependents (gateway, seeds) only after it passes. Code: each service's env config and `src/index.ts`, [`docker-compose.yml`](docker-compose.yml).
+Every service validates its environment with Zod and exits on a missing or invalid variable. Migrations and Kafka connections run before `listen`, so once `GET /health` answers, the service is ready. Compose uses that as the healthcheck and starts dependents (gateway, seeds) only after it passes. Code: each service's env config and `src/index.ts`, [`docker/services.yaml`](docker/services.yaml).
 
 ## Services
 
@@ -190,7 +190,8 @@ packages/
   http/                 → shared error handler, ApplicationError / HttpError bases
   logger/               → Pino logger factory
 
-infra/postgres/         → script that creates the service databases
+docker/                 → infra.yaml + services.yaml (included by the root compose.yaml), dev.yaml (hot-reload override)
+docker/postgres/        → script that creates the service databases
 ```
 
 ## Quickstart
@@ -225,15 +226,17 @@ Shopper journey through the gateway: `POST /api/auth/register` → `POST /api/au
 ## Testing
 
 ```bash
-docker compose up -d postgres redis kafka kafka-init mailpit
 pnpm install && pnpm build
+pnpm infra   # Postgres, Redis, Kafka + topics, Mailpit; no .env needed
 pnpm test
 ```
 
+`pnpm infra:down` stops the infrastructure and keeps its volumes. Run on its own, `docker/infra.yaml` reads `docker/.env`, not the root one, so root `.env` overrides (such as `POSTGRES_PORT`) apply only through `compose.yaml`.
+
 - **Integration first**: each service builds its Fastify app with `buildApp(deps)` against real Postgres and Redis, and asserts events as rows in its `outbox` table.
-- **Real broker**: the `kafka.test.ts` suites (and notification's `consumers.test.ts`) run the outbox relay and the consumers against Kafka, using the helpers in `@ecommerce/events/testing`. Run them against the infra-only command above, not `pnpm dev`: the running services' consumer groups would also consume the test messages.
+- **Real broker**: the `kafka.test.ts` suites (and notification's `consumers.test.ts`) run the outbox relay and the consumers against Kafka, using the helpers in `@ecommerce/events/testing`. Run them against `pnpm infra`, not `pnpm dev`: the running services' consumer groups would also consume the test messages.
 - **What is faked**: only the payment provider. payment-service tests inject a fake processor, the Stripe adapter is unit-tested against a stubbed SDK, and a contract test hits the real Stripe test API when `STRIPE_SECRET_KEY` is exported in the shell (skipped in CI).
-- **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)): on every PR to `main`, typecheck and build, then the full suite with Postgres and Redis as service containers and Kafka started from `docker-compose.yml`.
+- **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)): on every PR to `main`, typecheck and build, then the full suite against the same infrastructure as locally (`docker/infra.yaml` via `pnpm infra`).
 
 ## Known limitations and next steps
 

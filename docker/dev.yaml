@@ -1,5 +1,6 @@
 # Only services/<name>/src is mounted: changes to packages/*, dependencies or
 # seed scripts (seeds run the dist built into the image) need --build.
+# As a -f override, its relative paths resolve against the repo root.
 
 x-dev: &dev
   build: { target: dev }
