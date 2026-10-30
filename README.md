@@ -4,6 +4,8 @@
 
 An e-commerce backend split into seven TypeScript microservices behind an API gateway, wired with HTTP for queries and Kafka for everything that happens after an order is placed. The MVP is complete: a shopper can register, browse, fill a cart, place an order, pay through Stripe (test mode) and receive the emails, all in containers with one command.
 
+Built as a solution to the [roadmap.sh Scalable E-Commerce Platform project](https://roadmap.sh/projects/scalable-ecommerce-platform).
+
 What it demonstrates:
 
 - **Distributed consistency without distributed transactions**: order placement is a saga with compensations, and every event leaves through a transactional outbox, so a crash never loses or invents an event.
