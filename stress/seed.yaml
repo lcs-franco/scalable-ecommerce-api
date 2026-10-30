@@ -1,0 +1,37 @@
+x-seed-env: &seed-env
+  SEED_SCALE: ${SEED_SCALE:-1}
+  SEED_PRODUCTS: ${SEED_PRODUCTS:-}
+  SEED_USERS: ${SEED_USERS:-}
+  SEED_ORDERS: ${SEED_ORDERS:-}
+  SEED_SALT: ${SEED_SALT:-20261030}
+  HOT_STOCK: ${HOT_STOCK:-100}
+
+services:
+  stress-seed:
+    image: postgres:16-alpine
+    restart: 'no'
+    command: ['sh', '/seed/seed.sh']
+    environment:
+      <<: *seed-env
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-ecommerce}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-ecommerce_dev}
+    volumes:
+      - ./seed:/seed:ro
+    depends_on:
+      user-service: { condition: service_healthy }
+      product-service: { condition: service_healthy }
+      order-service: { condition: service_healthy }
+      payment-service: { condition: service_healthy }
+      user-seed: { condition: service_completed_successfully }
+      product-seed: { condition: service_completed_successfully }
+
+  cart-seed:
+    image: redis:7-alpine
+    restart: 'no'
+    command: ['sh', '/seed/cart.sh']
+    environment: *seed-env
+    volumes:
+      - ./seed:/seed:ro
+    depends_on:
+      redis: { condition: service_healthy }
