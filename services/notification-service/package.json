@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@ecommerce/events": "workspace:*",
+    "@ecommerce/http": "workspace:*",
     "@ecommerce/logger": "workspace:*",
     "dotenv": "^16.4.5",
     "fastify": "^5.1.0",

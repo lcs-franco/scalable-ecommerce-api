@@ -1,6 +1,10 @@
 import { authPlugin } from '@ecommerce/auth'
 import { DOCS_PREFIX, docsPlugin } from '@ecommerce/docs'
-import { registerErrorHandler } from '@ecommerce/http'
+import {
+  genRequestId,
+  registerErrorHandler,
+  registerRequestId,
+} from '@ecommerce/http'
 import Fastify, { type FastifyBaseLogger } from 'fastify'
 import {
   serializerCompiler,
@@ -21,11 +25,13 @@ interface IBuildAppOptions {
 export async function buildApp(opts: IBuildAppOptions) {
   const app = Fastify({
     loggerInstance: opts.logger,
+    genReqId: genRequestId,
   })
   app.setValidatorCompiler(validatorCompiler)
   app.setSerializerCompiler(serializerCompiler)
 
   registerErrorHandler(app)
+  registerRequestId(app)
 
   await app.register(docsPlugin, { title: 'cart-service' })
   await app.register(authPlugin, {
