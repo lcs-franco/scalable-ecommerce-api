@@ -294,6 +294,16 @@ describe('order routes', () => {
       expect(res.statusCode).toBe(200)
       expect(res.json().items).toHaveLength(0)
     })
+
+    it('should return 400 for an unknown status filter', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/orders?status=refunded',
+        headers: { authorization: `Bearer ${adminToken(app)}` },
+      })
+
+      expect(res.statusCode).toBe(400)
+    })
   })
 
   describe('GET /orders/:id', () => {
@@ -610,6 +620,21 @@ describe('order routes', () => {
       })
 
       expect(res.statusCode).toBe(409)
+    })
+
+    it('should return 400 for an unknown status', async () => {
+      const createRes = await placeTestOrder()
+      const orderId = createRes.json().id
+
+      const res = await app.inject({
+        method: 'PATCH',
+        url: `/orders/${orderId}/status`,
+        headers: { authorization: `Bearer ${adminToken(app)}` },
+        payload: { status: 'refunded' },
+      })
+
+      expect(res.statusCode).toBe(400)
+      expect(await statusChanges()).toEqual([])
     })
 
     it('should return 403 for non-admin', async () => {
