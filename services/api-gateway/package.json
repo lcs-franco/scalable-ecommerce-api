@@ -15,6 +15,7 @@
     "vitest": "^3.2.7"
   },
   "dependencies": {
+    "@ecommerce/http": "workspace:*",
     "@ecommerce/logger": "workspace:*",
     "@fastify/jwt": "^9.1.0",
     "@fastify/reply-from": "^12.7.1",

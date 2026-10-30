@@ -1,5 +1,5 @@
+import { HttpError } from '@ecommerce/http'
 import { ErrorCode } from '../ErrorCode.js'
-import { HttpError } from './HttpError.js'
 
 export class GatewayTimeout extends HttpError {
   public override statusCode = 504
