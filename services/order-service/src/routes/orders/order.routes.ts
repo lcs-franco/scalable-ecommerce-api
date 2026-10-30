@@ -26,6 +26,7 @@ export async function orderRoutes(fastify: FastifyInstance) {
         request.user,
         token,
         request.body.paymentMethodId,
+        request.id,
       )
 
       return reply.status(201).send(order)
@@ -77,6 +78,7 @@ export async function orderRoutes(fastify: FastifyInstance) {
       const order = await app.orderService.updateStatus(
         request.params.id,
         request.body.status,
+        request.id,
       )
       return reply.send(order)
     },

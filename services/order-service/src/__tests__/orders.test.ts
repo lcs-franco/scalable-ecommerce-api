@@ -59,6 +59,7 @@ describe('order routes', () => {
   }
 
   const PAYMENT_METHOD_ID = 'pm_card_visa'
+  const REQUEST_ID = '4f1c2a9e-8b3d-4e5f-9a6b-7c8d9e0f1a2b'
 
   async function placeTestOrder(token?: string, target = app) {
     return target.inject({
@@ -101,6 +102,42 @@ describe('order routes', () => {
       expect(body.items[0].productName).toBe(
         'Product 00000000-0000-0000-0000-000000000101',
       )
+    })
+
+    it('should forward the request id to the cart and product clients', async () => {
+      const requestIds: Record<string, string | undefined> = {}
+      const cartClient = mockCartClient()
+      const originalCheckout = cartClient.checkout
+      cartClient.checkout = async (userId, requestId) => {
+        requestIds.checkout = requestId
+
+        return originalCheckout(userId)
+      }
+
+      const productClient = mockProductClient()
+      const originalValidateOrder = productClient.validateOrder
+      productClient.validateOrder = async (items, requestId) => {
+        requestIds.validateOrder = requestId
+
+        return originalValidateOrder(items)
+      }
+
+      await withApp({ cartClient, productClient }, async (ctx) => {
+        await ctx.app.inject({
+          method: 'POST',
+          url: '/orders',
+          headers: {
+            authorization: `Bearer ${userToken(ctx.app)}`,
+            'x-request-id': REQUEST_ID,
+          },
+          payload: { paymentMethodId: PAYMENT_METHOD_ID },
+        })
+
+        expect(requestIds).toEqual({
+          checkout: REQUEST_ID,
+          validateOrder: REQUEST_ID,
+        })
+      })
     })
 
     it('should enqueue order.placed keyed by order with recipient and item names', async () => {
@@ -532,6 +569,30 @@ describe('order routes', () => {
         })
       },
     )
+
+    it('should forward the request id to the stock restore', async () => {
+      const requestIds: (string | undefined)[] = []
+      const productClient = mockProductClient()
+      productClient.restoreOrderStock = async (_orderId, _items, requestId) => {
+        requestIds.push(requestId)
+      }
+
+      await withApp({ productClient }, async (ctx) => {
+        const orderId = (await placeTestOrder(undefined, ctx.app)).json().id
+
+        await ctx.app.inject({
+          method: 'PATCH',
+          url: `/orders/${orderId}/status`,
+          headers: {
+            authorization: `Bearer ${adminToken(ctx.app)}`,
+            'x-request-id': REQUEST_ID,
+          },
+          payload: { status: 'cancelled' },
+        })
+
+        expect(requestIds).toEqual([REQUEST_ID])
+      })
+    })
 
     it('should not restore stock for an invalid transition', async () => {
       const productClient = mockProductClient()

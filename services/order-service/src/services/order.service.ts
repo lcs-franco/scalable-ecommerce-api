@@ -54,15 +54,18 @@ export function createOrderService(deps: IDeps) {
     user: Pick<ITokenPayload, 'userId' | 'email'>,
     userToken: string,
     paymentMethodId: string,
+    requestId?: string,
   ) {
     const { userId, email } = user
     const s = createSaga()
     return s.run(async () => {
-      const cart = await cartClient.checkout(userId)
-      s.addCompensation(() => cartClient.restore(cart, userToken))
+      const cart = await cartClient.checkout(userId, requestId)
+      s.addCompensation(() => cartClient.restore(cart, userToken, requestId))
 
-      const validatedItems = await productClient.validateOrder(cart)
-      s.addCompensation(() => productClient.restoreStock(validatedItems))
+      const validatedItems = await productClient.validateOrder(cart, requestId)
+      s.addCompensation(() =>
+        productClient.restoreStock(validatedItems, requestId),
+      )
 
       const total = validatedItems.reduce(
         (sum, item) => sum + item.price * item.quantity,
@@ -153,7 +156,11 @@ export function createOrderService(deps: IDeps) {
     return { ...order, items }
   }
 
-  async function updateStatus(id: string, newStatus: OrderStatus) {
+  async function updateStatus(
+    id: string,
+    newStatus: OrderStatus,
+    requestId?: string,
+  ) {
     const [existing] = await db
       .select()
       .from(orders)
@@ -169,7 +176,7 @@ export function createOrderService(deps: IDeps) {
 
     const updated =
       newStatus === 'cancelled'
-        ? await cancel(id, currentStatus)
+        ? await cancel(id, currentStatus, requestId)
         : await transition(id, currentStatus, newStatus)
 
     if (!updated) {
@@ -212,7 +219,11 @@ export function createOrderService(deps: IDeps) {
     })
   }
 
-  async function cancel(orderId: string, from: OrderStatus) {
+  async function cancel(
+    orderId: string,
+    from: OrderStatus,
+    requestId?: string,
+  ) {
     return db.transaction(async (tx) => {
       const [order] = await tx
         .select()
@@ -231,7 +242,7 @@ export function createOrderService(deps: IDeps) {
         .from(orderItems)
         .where(eq(orderItems.orderId, orderId))
 
-      await productClient.restoreOrderStock(orderId, items)
+      await productClient.restoreOrderStock(orderId, items, requestId)
 
       const [row] = await tx
         .update(orders)

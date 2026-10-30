@@ -1,3 +1,4 @@
+import { requestIdHeaders } from '@ecommerce/http'
 import { CartEmpty, ErrorCode } from '../errors/index.js'
 import { readUpstreamError } from './upstream.js'
 
@@ -12,12 +13,16 @@ interface ICartClientOptions {
 }
 
 export function createCartClient(opts: ICartClientOptions) {
-  async function checkout(userId: string): Promise<ICartItem[]> {
+  async function checkout(
+    userId: string,
+    requestId?: string,
+  ): Promise<ICartItem[]> {
     const res = await fetch(`${opts.baseUrl}/cart/checkout`, {
       method: 'POST',
       headers: {
         'x-internal-token': opts.internalServiceToken,
         'x-user-id': userId,
+        ...requestIdHeaders(requestId),
       },
     })
     if (!res.ok) {
@@ -33,7 +38,11 @@ export function createCartClient(opts: ICartClientOptions) {
     return body.items
   }
 
-  async function restore(items: ICartItem[], userToken: string): Promise<void> {
+  async function restore(
+    items: ICartItem[],
+    userToken: string,
+    requestId?: string,
+  ): Promise<void> {
     for (const item of items) {
       try {
         await fetch(`${opts.baseUrl}/cart/items`, {
@@ -41,6 +50,7 @@ export function createCartClient(opts: ICartClientOptions) {
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${userToken}`,
+            ...requestIdHeaders(requestId),
           },
           body: JSON.stringify({
             productId: item.productId,

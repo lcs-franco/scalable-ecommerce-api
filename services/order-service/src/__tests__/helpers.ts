@@ -17,7 +17,7 @@ export const PRODUCT_2 = '00000000-0000-0000-0000-000000000102'
 
 export function mockCartClient() {
   return {
-    checkout: async (_userId: string) => [
+    checkout: async (_userId: string, _requestId?: string) => [
       { productId: PRODUCT_1, quantity: 2 },
       { productId: PRODUCT_2, quantity: 1 },
     ],
@@ -32,7 +32,10 @@ export function mockProductClient() {
   }[] = []
   return {
     restoreOrderStockCalls,
-    validateOrder: async (items: { productId: string; quantity: number }[]) =>
+    validateOrder: async (
+      items: { productId: string; quantity: number }[],
+      _requestId?: string,
+    ) =>
       items.map((item) => ({
         productId: item.productId,
         name: `Product ${item.productId}`,
@@ -43,6 +46,7 @@ export function mockProductClient() {
     restoreOrderStock: async (
       orderId: string,
       items: { productId: string; quantity: number }[],
+      _requestId?: string,
     ) => {
       restoreOrderStockCalls.push({ orderId, items })
     },
