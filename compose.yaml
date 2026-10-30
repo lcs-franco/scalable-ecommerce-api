@@ -1,0 +1,5 @@
+name: ecommerce
+
+include:
+  - docker/infra.yaml
+  - docker/services.yaml

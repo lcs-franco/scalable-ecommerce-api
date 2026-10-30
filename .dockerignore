@@ -9,5 +9,5 @@
 .claude
 specs
 tasks
-infra
+docker
 **/*.md
