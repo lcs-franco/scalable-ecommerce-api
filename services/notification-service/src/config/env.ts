@@ -4,6 +4,7 @@ import { z } from 'zod'
 
 const envSchema = z.object({
   PORT: z.coerce.number().default(3006),
+  METRICS_PORT: z.coerce.number().default(9464),
   KAFKA_BROKER: z.string().default('localhost:9092'),
   REDIS_URL: z.string().default('redis://localhost:6379'),
   DEDUPE_TTL_SECONDS: z.coerce.number().int().positive().default(604800),

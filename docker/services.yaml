@@ -24,6 +24,7 @@ services:
       - ${GATEWAY_PORT:-3000}:3000
     environment:
       PORT: 3000
+      METRICS_PORT: 9464
       LOG_LEVEL: ${LOG_LEVEL:-info}
       REDIS_URL: redis://redis:6379
       JWT_SECRET: *jwt-secret
@@ -53,6 +54,7 @@ services:
     image: ecommerce/user-service
     environment: &user-env
       PORT: 3001
+      METRICS_PORT: 9464
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DATABASE_URL: postgresql://${POSTGRES_USER:-ecommerce}:${POSTGRES_PASSWORD:-ecommerce_dev}@postgres:5432/user_db
       KAFKA_BROKER: kafka:29092
@@ -77,6 +79,7 @@ services:
     image: ecommerce/product-service
     environment: &product-env
       PORT: 3002
+      METRICS_PORT: 9464
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DATABASE_URL: postgresql://${POSTGRES_USER:-ecommerce}:${POSTGRES_PASSWORD:-ecommerce_dev}@postgres:5432/product_db
       JWT_SECRET: *jwt-secret
@@ -98,6 +101,7 @@ services:
     image: ecommerce/cart-service
     environment:
       PORT: 3003
+      METRICS_PORT: 9464
       LOG_LEVEL: ${LOG_LEVEL:-info}
       REDIS_URL: redis://redis:6379
       JWT_SECRET: *jwt-secret
@@ -112,6 +116,7 @@ services:
     image: ecommerce/order-service
     environment:
       PORT: 3004
+      METRICS_PORT: 9464
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DATABASE_URL: postgresql://${POSTGRES_USER:-ecommerce}:${POSTGRES_PASSWORD:-ecommerce_dev}@postgres:5432/order_db
       JWT_SECRET: *jwt-secret
@@ -129,6 +134,7 @@ services:
     image: ecommerce/payment-service
     environment:
       PORT: 3005
+      METRICS_PORT: 9464
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DATABASE_URL: postgresql://${POSTGRES_USER:-ecommerce}:${POSTGRES_PASSWORD:-ecommerce_dev}@postgres:5432/payment_db
       JWT_SECRET: *jwt-secret
@@ -144,6 +150,7 @@ services:
     image: ecommerce/notification-service
     environment:
       PORT: 3006
+      METRICS_PORT: 9464
       LOG_LEVEL: ${LOG_LEVEL:-info}
       KAFKA_BROKER: kafka:29092
       REDIS_URL: redis://redis:6379

@@ -1,5 +1,6 @@
 /* eslint-disable no-console */
 import { createLogger } from '@ecommerce/logger'
+import { startMetricsServer } from '@ecommerce/metrics'
 import { buildApp } from './app.js'
 import { config } from './config.js'
 import { createRedis } from './redis.js'
@@ -16,8 +17,14 @@ async function main() {
     internalServiceToken: config.INTERNAL_SERVICE_TOKEN,
   })
 
+  const metrics = await startMetricsServer({
+    port: config.METRICS_PORT,
+    service: 'cart-service',
+  })
+
   const shutdown = async () => {
     await app.close()
+    await metrics.close()
     redis.disconnect()
   }
   process.on('SIGTERM', shutdown)

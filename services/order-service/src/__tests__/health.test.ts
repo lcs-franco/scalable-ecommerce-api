@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { createTestApp } from './helpers.js'
+import { createTestApp, userToken } from './helpers.js'
 
 describe('GET /health', () => {
   let ctx: Awaited<ReturnType<typeof createTestApp>>
@@ -30,5 +30,15 @@ describe('GET /health', () => {
     })
 
     expect(res.headers['x-request-id']).toBe(incoming)
+  })
+
+  it('should not serve /metrics on the app port', async () => {
+    const res = await ctx.app.inject({
+      method: 'GET',
+      url: '/metrics',
+      headers: { authorization: `Bearer ${userToken(ctx.app)}` },
+    })
+
+    expect(res.statusCode).toBe(404)
   })
 })

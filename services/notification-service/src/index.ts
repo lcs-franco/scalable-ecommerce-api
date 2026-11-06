@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 import { createConsumer, createKafkaLogCreator } from '@ecommerce/events'
 import { createLogger } from '@ecommerce/logger'
+import { consumerMetrics, startMetricsServer } from '@ecommerce/metrics'
 import { Kafka, logLevel } from 'kafkajs'
 import { buildApp } from './app.js'
 import { config } from './config/env.js'
@@ -29,7 +30,9 @@ async function main() {
     logCreator: createKafkaLogCreator(log),
     logLevel: logLevel.DEBUG,
   })
-  const consumer = createConsumer(kafka, 'notification-service', log)
+  const consumer = createConsumer(kafka, 'notification-service', log, {
+    onProcessed: consumerMetrics(),
+  })
   await consumer.connect()
 
   const redis = createRedis(config.REDIS_URL)
@@ -47,8 +50,14 @@ async function main() {
     }),
   })
 
+  const metrics = await startMetricsServer({
+    port: config.METRICS_PORT,
+    service: 'notification-service',
+  })
+
   const shutdown = async () => {
     await app.close()
+    await metrics.close()
     await consumer.disconnect()
     await redis.quit()
   }

@@ -5,6 +5,7 @@ import {
   registerErrorHandler,
   registerRequestId,
 } from '@ecommerce/http'
+import { metricsPlugin } from '@ecommerce/metrics'
 import Fastify, { type FastifyBaseLogger } from 'fastify'
 import {
   serializerCompiler,
@@ -50,6 +51,7 @@ export async function buildApp(opts: IBuildAppOptions) {
 
   registerErrorHandler(app)
   registerRequestId(app)
+  await app.register(metricsPlugin)
 
   await app.register(docsPlugin, { title: 'order-service' })
   await app.register(authPlugin, { publicPrefixes: [DOCS_PREFIX] })
