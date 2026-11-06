@@ -1,5 +1,6 @@
 /* eslint-disable no-console */
 import { createLogger } from '@ecommerce/logger'
+import { startMetricsServer, upstreamMetrics } from '@ecommerce/metrics'
 import { Redis } from 'ioredis'
 import { buildApp } from './app.js'
 import { config } from './config/env.js'
@@ -29,11 +30,18 @@ async function main() {
       authenticated: config.RATE_LIMIT_AUTHENTICATED,
     },
     upstreamTimeoutMs: config.UPSTREAM_TIMEOUT_MS,
+    onUpstream: upstreamMetrics(),
     trustProxy: config.TRUST_PROXY,
+  })
+
+  const metrics = await startMetricsServer({
+    port: config.METRICS_PORT,
+    service: 'api-gateway',
   })
 
   const shutdown = async () => {
     await app.close()
+    await metrics.close()
     redis.disconnect()
   }
   process.on('SIGTERM', shutdown)

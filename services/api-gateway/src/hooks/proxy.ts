@@ -1,4 +1,5 @@
 import { REQUEST_ID_HEADER } from '@ecommerce/http'
+import type { IUpstreamCall } from '@ecommerce/metrics'
 import replyFrom from '@fastify/reply-from'
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import type { IncomingHttpHeaders } from 'node:http'
@@ -28,7 +29,11 @@ function forwardedHeaders(
 
 export async function registerProxy(
   app: FastifyInstance,
-  opts: { upstreams: Upstreams; timeoutMs: number },
+  opts: {
+    upstreams: Upstreams
+    timeoutMs: number
+    onUpstream?: (call: IUpstreamCall) => void
+  },
 ) {
   app.removeAllContentTypeParsers()
   app.addContentTypeParser('*', (_request, payload, done) =>
@@ -45,18 +50,33 @@ export async function registerProxy(
       method: route.method,
       url: route.path,
       config: { access: route.access },
-      handler: (request, reply) =>
-        reply.from(`${base}${request.url.slice(prefix.length)}`, {
+      handler: (request, reply) => {
+        const startedAt = performance.now()
+
+        const observe = (outcome: IUpstreamCall['outcome']) =>
+          opts.onUpstream?.({
+            upstream: `${route.upstream}-service`,
+            durationMs: performance.now() - startedAt,
+            outcome,
+          })
+
+        return reply.from(`${base}${request.url.slice(prefix.length)}`, {
           timeout: opts.timeoutMs,
           rewriteRequestHeaders: (_req, headers) =>
             forwardedHeaders(headers, request),
+          onResponse: (_request, reply, res) => {
+            observe('ok')
+            reply.send(res.stream)
+          },
           onError: (reply, { error }) => {
             const { statusCode } = error as { statusCode?: number }
-            reply.send(
-              statusCode === 504 ? new GatewayTimeout() : new BadGateway(),
-            )
+            const timedOut = statusCode === 504
+
+            observe(timedOut ? 'timeout' : 'error')
+            reply.send(timedOut ? new GatewayTimeout() : new BadGateway())
           },
-        }),
+        })
+      },
     })
   }
 }
