@@ -20,6 +20,7 @@ export async function seedSampleData(db: Db) {
     .insert(products)
     .values([
       {
+        id: '00000000-0000-4000-8000-000000000001',
         name: 'Wireless Headphones',
         description: 'Noise-cancelling over-ear headphones',
         price: 9999,
@@ -27,6 +28,7 @@ export async function seedSampleData(db: Db) {
         categoryId: electronics.id,
       },
       {
+        id: '00000000-0000-4000-8000-000000000002',
         name: 'USB-C Cable',
         description: 'Fast charging 2m cable',
         price: 1299,
@@ -34,6 +36,7 @@ export async function seedSampleData(db: Db) {
         categoryId: electronics.id,
       },
       {
+        id: '00000000-0000-4000-8000-000000000003',
         name: 'Cotton T-Shirt',
         description: '100% organic cotton, black',
         price: 2499,
@@ -41,6 +44,7 @@ export async function seedSampleData(db: Db) {
         categoryId: clothing.id,
       },
       {
+        id: '00000000-0000-4000-8000-000000000004',
         name: 'Running Shoes',
         description: 'Lightweight running shoes',
         price: 8999,
@@ -48,6 +52,7 @@ export async function seedSampleData(db: Db) {
         categoryId: clothing.id,
       },
       {
+        id: '00000000-0000-4000-8000-000000000005',
         name: 'Clean Code',
         description: 'A Handbook of Agile Software Craftsmanship',
         price: 3499,
@@ -55,5 +60,6 @@ export async function seedSampleData(db: Db) {
         categoryId: books.id,
       },
     ])
+    // fixed ids make the PK conflict on re-runs, keeping stock changed by orders
     .onConflictDoNothing()
 }
