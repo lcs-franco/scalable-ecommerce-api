@@ -2,7 +2,7 @@
 
 A separate compose project (`ecommerce-stress`) with a deliberately absurd dataset, so the stress campaign sees what breaks under real data volume. Decisions live in issue #72.
 
-It runs alongside `pnpm dev`: own volumes, host ports shifted by `ports.env` (gateway 4000, Postgres 6432, Redis 7380, Kafka 10092, Mailpit 2025/9025). Secrets come from the root `.env`.
+It runs alongside `pnpm dev`: own volumes, host ports shifted by `ports.env` (gateway 4000, Postgres 6432, Redis 7380, Kafka 10092, Mailpit 2025/9025, Grafana 4100, Prometheus 10090). Secrets come from the root `.env`.
 
 ## Usage
 
@@ -23,8 +23,11 @@ stress/scripts/restore.sh
 docker compose -f stress/compose.yaml exec -T postgres \
   psql -U ecommerce -d product_db -v hot_stock=100 -f - < stress/seed/reset-hot.sql
 
+# Metrics: Grafana at http://localhost:4100, Prometheus at http://localhost:10090
+docker compose -f stress/compose.yaml --profile observability up -d
+
 # Stop (keeps the data); rebuild from scratch with down -v, then up
-docker compose -f stress/compose.yaml down
+docker compose -f stress/compose.yaml --profile observability down
 ```
 
 `up --wait` reports failure because `cart-seed` exits on its own; wait on the seed container instead. The seed runs on every `up` but each database script skips itself once its marker row exists. Snapshot volumes (`ecommerce-stress_postgres-snapshot-<name>`, ~37 GB each at full scale) are not part of the compose file, so `down -v` keeps them; remove them with `docker volume rm`. A restore resets Postgres only: re-seed the carts with `docker compose -f stress/compose.yaml up cart-seed`.

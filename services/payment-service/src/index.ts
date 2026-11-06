@@ -4,8 +4,14 @@ import {
   createKafkaLogCreator,
   createProducer,
 } from '@ecommerce/events'
-import { createOutboxRelay } from '@ecommerce/events/outbox'
+import { createOutboxRelay, outboxBacklog } from '@ecommerce/events/outbox'
 import { createLogger } from '@ecommerce/logger'
+import {
+  consumerMetrics,
+  observeOutbox,
+  observePgPool,
+  startMetricsServer,
+} from '@ecommerce/metrics'
 import { Kafka, logLevel } from 'kafkajs'
 import Stripe from 'stripe'
 import { buildApp } from './app.js'
@@ -22,6 +28,9 @@ async function main() {
 
   const { db, pool } = createDb(config.DATABASE_URL)
 
+  observePgPool(pool)
+  observeOutbox(() => outboxBacklog(db))
+
   const kafka = new Kafka({
     clientId: 'payment-service',
     brokers: [config.KAFKA_BROKER],
@@ -32,7 +41,9 @@ async function main() {
   const producer = createProducer(kafka)
   await producer.connect()
 
-  const consumer = createConsumer(kafka, 'payment-service', log)
+  const consumer = createConsumer(kafka, 'payment-service', log, {
+    onProcessed: consumerMetrics(),
+  })
   await consumer.connect()
 
   const processor = createStripeProcessor({
@@ -51,8 +62,14 @@ async function main() {
     log,
   })
 
+  const metrics = await startMetricsServer({
+    port: config.METRICS_PORT,
+    service: 'payment-service',
+  })
+
   const shutdown = async () => {
     await app.close()
+    await metrics.close()
     await relay.stop()
     await consumer.disconnect()
     await producer.disconnect()

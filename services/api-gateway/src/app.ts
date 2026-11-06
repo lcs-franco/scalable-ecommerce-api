@@ -4,6 +4,7 @@ import {
   HttpError,
   registerRequestId,
 } from '@ecommerce/http'
+import { metricsPlugin, type IUpstreamCall } from '@ecommerce/metrics'
 import Fastify, { type FastifyBaseLogger, FastifyError } from 'fastify'
 import type { Redis } from 'ioredis'
 import { RouteNotFound } from './errors/index.js'
@@ -24,6 +25,7 @@ interface IBuildAppOptions {
   jwtSecret: string
   rateLimits: IRateLimits
   upstreamTimeoutMs: number
+  onUpstream?: (call: IUpstreamCall) => void
   trustProxy?: boolean
   now?: () => number
 }
@@ -56,6 +58,7 @@ export async function buildApp(opts: IBuildAppOptions) {
   })
 
   registerRequestId(app)
+  await app.register(metricsPlugin)
 
   // Hook order is the pipeline: identity → rate limit → access → proxy
   await registerIdentity(app, { jwtSecret: opts.jwtSecret })
@@ -75,6 +78,7 @@ export async function buildApp(opts: IBuildAppOptions) {
   await registerProxy(app, {
     upstreams: opts.upstreams,
     timeoutMs: opts.upstreamTimeoutMs,
+    onUpstream: opts.onUpstream,
   })
 
   return app

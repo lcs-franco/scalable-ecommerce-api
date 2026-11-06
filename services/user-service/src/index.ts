@@ -1,6 +1,11 @@
 import { createKafkaLogCreator, createProducer } from '@ecommerce/events'
-import { createOutboxRelay } from '@ecommerce/events/outbox'
+import { createOutboxRelay, outboxBacklog } from '@ecommerce/events/outbox'
 import { createLogger } from '@ecommerce/logger'
+import {
+  observeOutbox,
+  observePgPool,
+  startMetricsServer,
+} from '@ecommerce/metrics'
 import { Kafka, logLevel } from 'kafkajs'
 import { buildApp } from './app.js'
 import { config } from './config.js'
@@ -10,6 +15,9 @@ async function main() {
   const log = createLogger({ service: 'user-service', level: config.LOG_LEVEL })
 
   const { db, pool } = createDb(config.DATABASE_URL)
+
+  observePgPool(pool)
+  observeOutbox(() => outboxBacklog(db))
 
   const kafka = new Kafka({
     clientId: 'user-service',
@@ -24,8 +32,14 @@ async function main() {
 
   const relay = createOutboxRelay({ db, producer, log })
 
+  const metrics = await startMetricsServer({
+    port: config.METRICS_PORT,
+    service: 'user-service',
+  })
+
   const shutdown = async () => {
     await app.close()
+    await metrics.close()
     await relay.stop()
     await producer.disconnect()
     await pool.end()

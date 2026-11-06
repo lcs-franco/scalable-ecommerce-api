@@ -96,6 +96,23 @@ function createLoop(
   return { start, stop }
 }
 
+export interface IOutboxBacklog {
+  pending: number
+  oldestAgeSeconds: number
+}
+
+export async function outboxBacklog(db: OutboxDb): Promise<IOutboxBacklog> {
+  const [row] = await db
+    .select({
+      pending: sql<number>`count(*)::int`,
+      oldestAgeSeconds: sql<number>`coalesce(extract(epoch from clock_timestamp() - min(${outbox.createdAt})), 0)::float8`,
+    })
+    .from(outbox)
+    .where(isNull(outbox.publishedAt))
+
+  return row
+}
+
 export function createOutboxRelay(options: IOutboxRelayOptions) {
   const {
     db,

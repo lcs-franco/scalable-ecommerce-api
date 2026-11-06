@@ -1,4 +1,5 @@
 import { genRequestId, registerRequestId } from '@ecommerce/http'
+import { metricsPlugin } from '@ecommerce/metrics'
 import Fastify, { type FastifyBaseLogger } from 'fastify'
 
 interface IBuildAppOptions {
@@ -12,6 +13,7 @@ export async function buildApp(opts: IBuildAppOptions) {
   })
 
   registerRequestId(app)
+  await app.register(metricsPlugin)
 
   app.get('/health', async () => ({ status: 'ok' }))
 

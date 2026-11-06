@@ -17,6 +17,7 @@
   "dependencies": {
     "@ecommerce/http": "workspace:*",
     "@ecommerce/logger": "workspace:*",
+    "@ecommerce/metrics": "workspace:*",
     "@fastify/jwt": "^9.1.0",
     "@fastify/reply-from": "^12.7.1",
     "dotenv": "^16.6.1",

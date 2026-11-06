@@ -1,0 +1,37 @@
+# 5s so a 30s spike still has enough samples for rate()
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  # Each service serves /metrics on METRICS_PORT, reachable only inside the compose network
+  - job_name: services
+    static_configs:
+      - targets:
+          - api-gateway:9464
+          - user-service:9464
+          - product-service:9464
+          - cart-service:9464
+          - order-service:9464
+          - payment-service:9464
+          - notification-service:9464
+
+  - job_name: cadvisor
+    static_configs:
+      - targets: [cadvisor:8080]
+
+  - job_name: postgres
+    static_configs:
+      - targets: [postgres-exporter:9187]
+
+  - job_name: redis
+    static_configs:
+      - targets: [redis-exporter:9121]
+
+  - job_name: kafka
+    static_configs:
+      - targets: [kafka-exporter:9308]
+
+  - job_name: prometheus
+    static_configs:
+      - targets: [localhost:9090]

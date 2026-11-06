@@ -3,3 +3,4 @@ name: ecommerce
 include:
   - docker/infra.yaml
   - docker/services.yaml
+  - docker/observability.yaml

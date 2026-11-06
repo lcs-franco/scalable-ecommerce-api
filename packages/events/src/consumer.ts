@@ -12,12 +12,26 @@ type Handler<T extends TopicName = TopicName> = (
   meta: IEventMeta,
 ) => Promise<void>
 
+export type ProcessedOutcome = 'ok' | 'error' | 'poison'
+
+export interface IProcessedEvent {
+  topic: string
+  durationMs: number
+  outcome: ProcessedOutcome
+}
+
+export interface IConsumerOptions extends Omit<ConsumerConfig, 'groupId'> {
+  onProcessed?: (event: IProcessedEvent) => void
+}
+
 export function createConsumer(
   kafka: Kafka,
   groupId: string,
   log: Pick<IKafkaLogTarget, 'error'>,
-  config?: Omit<ConsumerConfig, 'groupId'>,
+  options: IConsumerOptions = {},
 ) {
+  const { onProcessed, ...config } = options
+
   const consumer = kafka.consumer({ ...config, groupId })
   const handlers = new Map<TopicName, Handler>()
 
@@ -40,6 +54,15 @@ export function createConsumer(
         const handler = handlers.get(topic as TopicName)
         if (!handler) return
 
+        const startedAt = performance.now()
+
+        const report = (outcome: ProcessedOutcome) =>
+          onProcessed?.({
+            topic,
+            durationMs: performance.now() - startedAt,
+            outcome,
+          })
+
         let validated: EventData<TopicName>
         try {
           const parsed = JSON.parse(message.value.toString())
@@ -49,12 +72,22 @@ export function createConsumer(
             { topic, partition, offset: message.offset, err },
             'Skipping poison message',
           )
+          report('poison')
+
           return
         }
 
         const eventId = message.headers?.[EVENT_ID_HEADER]?.toString()
 
-        await handler(validated, { eventId })
+        try {
+          await handler(validated, { eventId })
+        } catch (err) {
+          report('error')
+
+          throw err
+        }
+
+        report('ok')
       },
     })
   }
