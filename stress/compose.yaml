@@ -8,3 +8,5 @@ include:
     env_file: [../.env, ports.env]
   - path: seed.yaml
     env_file: [../.env, ports.env]
+  - path: ../docker/observability.yaml
+    env_file: [../.env, ports.env]
