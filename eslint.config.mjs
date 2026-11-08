@@ -34,4 +34,17 @@ export default [
       ],
     },
   },
+  {
+    files: ['{packages,services}/*/src/**/*.ts'],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-misused-promises': 'error',
+      '@typescript-eslint/no-floating-promises': 'error',
+    },
+  },
 ]
