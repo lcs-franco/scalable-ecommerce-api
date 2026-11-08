@@ -61,8 +61,16 @@ async function main() {
     await consumer.disconnect()
     await redis.quit()
   }
-  process.on('SIGTERM', shutdown)
-  process.on('SIGINT', shutdown)
+
+  const onSignal = () => {
+    shutdown().catch((err) => {
+      log.error({ err }, 'shutdown failed')
+      process.exit(1)
+    })
+  }
+
+  process.on('SIGTERM', onSignal)
+  process.on('SIGINT', onSignal)
 
   await app.listen({ port: config.PORT, host: '0.0.0.0' })
   console.log('App running on port:', config.PORT)
