@@ -56,7 +56,7 @@ describe('payment-service on the broker', () => {
   it('publishes payment.confirmed when the processor succeeds', async () => {
     const confirmed = await collectEvents(kafka, Topics.PAYMENT_CONFIRMED)
 
-    ctx.fake.willReturn({ success: true, providerPaymentId: 'pi_ok' })
+    ctx.stub.willReturn({ success: true, providerPaymentId: 'pi_ok' })
     const event = orderPlacedEvent()
 
     await producer.publish(Topics.ORDER_PLACED, event)
@@ -74,7 +74,7 @@ describe('payment-service on the broker', () => {
   it('publishes payment.failed when the processor declines', async () => {
     const failed = await collectEvents(kafka, Topics.PAYMENT_FAILED)
 
-    ctx.fake.willReturn({ success: false, reason: 'Your card was declined.' })
+    ctx.stub.willReturn({ success: false, reason: 'Your card was declined.' })
     const event = orderPlacedEvent()
 
     await producer.publish(Topics.ORDER_PLACED, event)

@@ -28,6 +28,10 @@ _Avoid_: failed, crashed
 The single product every buyer competes for, with a small known stock, used to expose overselling under contention.
 _Avoid_: popular product, top product
 
+**Fake processor**:
+The in-process payment provider that replaces Stripe in the stress world, with configurable latency, jitter and failure rate.
+_Avoid_: mock, fake PSP
+
 **Whale**:
 A user with an extreme order history, used to expose queries that scale with one user's data.
 _Avoid_: power user, heavy user

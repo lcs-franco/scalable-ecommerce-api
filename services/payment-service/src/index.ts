@@ -5,7 +5,7 @@ import {
   createProducer,
 } from '@ecommerce/events'
 import { createOutboxRelay, outboxBacklog } from '@ecommerce/events/outbox'
-import { createLogger } from '@ecommerce/logger'
+import { createLogger, type Logger } from '@ecommerce/logger'
 import {
   consumerMetrics,
   observeOutbox,
@@ -18,7 +18,30 @@ import { buildApp } from './app.js'
 import { config } from './config/env.js'
 import { createDb } from './db/index.js'
 import { setupConsumers } from './kafka/consumers.js'
+import { createFakeProcessor } from './payments/fake.processor.js'
+import type { IPaymentProcessor } from './payments/payment-processor.js'
 import { createStripeProcessor } from './payments/stripe.processor.js'
+
+function createProcessor(log: Logger): IPaymentProcessor {
+  if (config.PAYMENT_PROCESSOR === 'stripe') {
+    log.info('Payment processor: stripe (test mode)')
+
+    return createStripeProcessor({
+      stripe: new Stripe(config.STRIPE_SECRET_KEY, { maxNetworkRetries: 2 }),
+      log,
+    })
+  }
+
+  const knobs = {
+    latencyMs: config.FAKE_PAYMENT_LATENCY_MS,
+    jitterMs: config.FAKE_PAYMENT_JITTER_MS,
+    failureRate: config.FAKE_PAYMENT_FAILURE_RATE,
+  }
+
+  log.warn(knobs, 'Payment processor: fake, no real charges')
+
+  return createFakeProcessor(knobs)
+}
 
 async function main() {
   const log = createLogger({
@@ -48,12 +71,7 @@ async function main() {
 
   await consumer.connect()
 
-  const processor = createStripeProcessor({
-    stripe: new Stripe(config.STRIPE_SECRET_KEY, { maxNetworkRetries: 2 }),
-    log,
-  })
-
-  log.info(`Payment processor: ${processor.name} (test mode)`)
+  const processor = createProcessor(log)
 
   const app = await buildApp({ db, logger: log, processor })
 

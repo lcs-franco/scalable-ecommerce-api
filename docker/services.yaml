@@ -140,6 +140,10 @@ services:
       JWT_SECRET: *jwt-secret
       KAFKA_BROKER: kafka:29092
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:?set STRIPE_SECRET_KEY (sk_test_...) in .env}
+      PAYMENT_PROCESSOR: ${PAYMENT_PROCESSOR:-stripe}
+      FAKE_PAYMENT_LATENCY_MS: ${FAKE_PAYMENT_LATENCY_MS:-0}
+      FAKE_PAYMENT_JITTER_MS: ${FAKE_PAYMENT_JITTER_MS:-0}
+      FAKE_PAYMENT_FAILURE_RATE: ${FAKE_PAYMENT_FAILURE_RATE:-0}
     depends_on:
       postgres: { condition: service_healthy }
       kafka-init: { condition: service_completed_successfully }

@@ -20,7 +20,7 @@ export const DEFAULT_USER_ID = '00000000-0000-0000-0000-000000000002'
 export const DEFAULT_USER_EMAIL = 'user@test.com'
 export const OTHER_USER_ID = '00000000-0000-0000-0000-000000000003'
 
-export function fakeProcessor() {
+export function stubProcessor() {
   const calls: Parameters<IPaymentProcessor['processPayment']>[0][] = []
   let next: PaymentResult = { success: true, providerPaymentId: 'pi_fake_1' }
 
@@ -42,19 +42,19 @@ export function fakeProcessor() {
   }
 }
 
-export async function createTestApp() {
+export async function createTestApp(opts?: { processor?: IPaymentProcessor }) {
   const { db, pool } = createDb(TEST_DATABASE_URL)
-  const fake = fakeProcessor()
+  const stub = stubProcessor()
 
   const app = await buildApp({
     db,
     logger: createLogger({ service: 'payment-service', level: 'silent' }),
-    processor: fake.processor,
+    processor: opts?.processor ?? stub.processor,
   })
 
   await app.ready()
 
-  return { app, db, pool, fake }
+  return { app, db, pool, stub }
 }
 
 type App = Awaited<ReturnType<typeof createTestApp>>['app']

@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { payments } from '../db/schema.js'
+import { createFakeProcessor } from '../payments/fake.processor.js'
 import {
   cleanDb,
   createTestApp,
@@ -17,8 +18,8 @@ describe('paymentService.processOrderPlaced', () => {
 
   afterEach(async () => {
     await cleanDb(ctx.db)
-    ctx.fake.calls.length = 0
-    ctx.fake.willReturn({ success: true, providerPaymentId: 'pi_fake_1' })
+    ctx.stub.calls.length = 0
+    ctx.stub.willReturn({ success: true, providerPaymentId: 'pi_fake_1' })
   })
 
   afterAll(async () => {
@@ -87,7 +88,7 @@ describe('paymentService.processOrderPlaced', () => {
 
     await ctx.app.paymentService.processOrderPlaced(event)
 
-    expect(ctx.fake.calls).toEqual([
+    expect(ctx.stub.calls).toEqual([
       {
         amount: 3000,
         currency: 'usd',
@@ -99,7 +100,7 @@ describe('paymentService.processOrderPlaced', () => {
   })
 
   it('marks the payment failed and enqueues payment.failed on failure', async () => {
-    ctx.fake.willReturn({
+    ctx.stub.willReturn({
       success: false,
       reason: 'Your card was declined.',
       providerPaymentId: 'pi_declined',
@@ -135,10 +136,10 @@ describe('paymentService.processOrderPlaced', () => {
     await ctx.app.paymentService.processOrderPlaced(event)
     const first = await outboxEvents(ctx.db)
 
-    ctx.fake.willReturn({ success: false, reason: 'should not be used' })
+    ctx.stub.willReturn({ success: false, reason: 'should not be used' })
     await ctx.app.paymentService.processOrderPlaced(event)
 
-    expect(ctx.fake.calls).toHaveLength(1)
+    expect(ctx.stub.calls).toHaveLength(1)
     expect(await outboxEvents(ctx.db)).toEqual(first)
     expect((await findPayment(event.orderId)).status).toBe('confirmed')
   })
@@ -147,9 +148,9 @@ describe('paymentService.processOrderPlaced', () => {
     const event = orderPlacedEvent()
     const leftover = await insertPendingPayment(event)
 
-    const original = ctx.fake.processor.processPayment
+    const original = ctx.stub.processor.processPayment
 
-    ctx.fake.processor.processPayment = async () => {
+    ctx.stub.processor.processPayment = async () => {
       await ctx.db
         .update(payments)
         .set({ status: 'failed', failureReason: 'other consumer' })
@@ -161,7 +162,7 @@ describe('paymentService.processOrderPlaced', () => {
     try {
       await ctx.app.paymentService.processOrderPlaced(event)
     } finally {
-      ctx.fake.processor.processPayment = original
+      ctx.stub.processor.processPayment = original
     }
 
     expect(await outboxEvents(ctx.db)).toEqual([])
@@ -180,7 +181,58 @@ describe('paymentService.processOrderPlaced', () => {
 
     expect(row.id).toBe(leftover.id)
     expect(row.status).toBe('confirmed')
-    expect(ctx.fake.calls).toHaveLength(1)
+    expect(ctx.stub.calls).toHaveLength(1)
     expect(await outboxEvents(ctx.db)).toHaveLength(1)
+  })
+})
+
+describe('paymentService.processOrderPlaced with the fake processor', () => {
+  let ctx: Awaited<ReturnType<typeof createTestApp>>
+
+  beforeAll(async () => {
+    ctx = await createTestApp({
+      processor: createFakeProcessor({ failureRate: 1 }),
+    })
+  })
+
+  afterEach(async () => {
+    await cleanDb(ctx.db)
+  })
+
+  afterAll(async () => {
+    await ctx.app.close()
+    await ctx.pool.end()
+  })
+
+  it('fails the payment as provider fake and enqueues payment.failed at failure rate 1', async () => {
+    const event = orderPlacedEvent()
+
+    await ctx.app.paymentService.processOrderPlaced(event)
+
+    const [row] = await ctx.db
+      .select()
+      .from(payments)
+      .where(eq(payments.orderId, event.orderId))
+
+    expect(row).toMatchObject({
+      status: 'failed',
+      provider: 'fake',
+      providerPaymentId: `fake_${event.orderId}`,
+      failureReason: 'fake decline',
+    })
+
+    expect(await outboxEvents(ctx.db, 'payment.failed')).toEqual([
+      {
+        topic: 'payment.failed',
+        key: row.id,
+        data: {
+          orderId: event.orderId,
+          paymentId: row.id,
+          userId: event.userId,
+          email: event.email,
+          reason: 'fake decline',
+        },
+      },
+    ])
   })
 })

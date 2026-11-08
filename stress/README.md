@@ -62,9 +62,9 @@ At full scale `verify.sh` takes ~10 s (it scans `products`, `orders` and `order_
 
 A scenario is a file in `scenarios/` that declares its executors (always open model: `constant-arrival-rate` or `ramping-arrival-rate`, so overload shows up as latency and errors), its thresholds and `handleSummary`. It sends every request through `lib/http.ts`, which tags `name` with the route template (`/api/products/:id`).
 
-| Scenario | Traffic                                                                                       |
-| -------- | --------------------------------------------------------------------------------------------- |
-| `smoke`  | 1 iteration/s for 1 min: list products, open one, add it to the cart, check out (Stripe test) |
+| Scenario | Traffic                                                                                          |
+| -------- | ------------------------------------------------------------------------------------------------ |
+| `smoke`  | 1 iteration/s for 1 min: list products, open one, add it to the cart, check out (fake processor) |
 
 `lib/`:
 
@@ -75,12 +75,21 @@ A scenario is a file in `scenarios/` that declares its executors (always open mo
 
 ### Knobs
 
-| Env                                           | Default   | Effect                                                                  |
-| --------------------------------------------- | --------- | ----------------------------------------------------------------------- |
-| `SEED_SCALE` / `SEED_PRODUCTS` / `SEED_USERS` | as seeded | World size k6 derives ids from                                          |
-| `K6_USERS`                                    | `200`     | Users logged in by `setup()`                                            |
-| `VERIFY_TIMEOUT`                              | `60`      | Seconds `verify.sh` waits for the run to settle                         |
-| `RATE_LIMIT_ANONYMOUS` / `_AUTHENTICATED`     | `1000000` | Gateway limits per minute (`stress.env`); the limiter stays in the path |
+| Env                                           | Default       | Effect                                                                         |
+| --------------------------------------------- | ------------- | ------------------------------------------------------------------------------ |
+| `SEED_SCALE` / `SEED_PRODUCTS` / `SEED_USERS` | as seeded     | World size k6 derives ids from                                                 |
+| `K6_USERS`                                    | `200`         | Users logged in by `setup()`                                                   |
+| `VERIFY_TIMEOUT`                              | `60`          | Seconds `verify.sh` waits for the run to settle                                |
+| `RATE_LIMIT_ANONYMOUS` / `_AUTHENTICATED`     | `1000000`     | Gateway limits per minute (`stress.env`); the limiter stays in the path        |
+| `PAYMENT_PROCESSOR`                           | `fake`        | Payment processor (`stress.env`); `stripe` sends checkouts to Stripe test mode |
+| `FAKE_PAYMENT_LATENCY_MS` / `_JITTER_MS`      | `200` / `100` | Fake processor delay: latency plus a uniform random share of the jitter        |
+| `FAKE_PAYMENT_FAILURE_RATE`                   | `0`           | Share of orders the fake processor declines (0–1), decided per order           |
+
+The fake processor's outcome is a hash of the order's idempotency key, so a redelivered `order.placed` gets the same answer, and `pm_card_chargeDeclined` always declines, so a scenario can pick failures from the request body. Payments it handles have `provider = 'fake'`. To simulate a slow PSP, override a knob and recreate the service:
+
+```bash
+FAKE_PAYMENT_LATENCY_MS=3000 docker compose -f stress/compose.yaml up -d payment-service
+```
 
 ### When to restore
 
