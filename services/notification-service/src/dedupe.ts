@@ -18,6 +18,7 @@ export function createDeduper(deps: IDeps) {
   async function claim(eventId?: string): Promise<boolean> {
     if (!eventId) {
       log.debug('Event without event-id header, processing without dedupe')
+
       return true
     }
 
@@ -37,6 +38,7 @@ export function createDeduper(deps: IDeps) {
       return false
     } catch (err) {
       log.error({ err, eventId }, 'Dedupe check failed, processing anyway')
+
       return true
     }
   }

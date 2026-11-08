@@ -8,6 +8,7 @@ describe('auth routes', () => {
 
   beforeAll(async () => {
     const ctx = await createTestApp()
+
     app = ctx.app
     db = ctx.db
     pool = ctx.pool
@@ -36,6 +37,7 @@ describe('auth routes', () => {
 
       expect(res.statusCode).toBe(201)
       const body = res.json()
+
       expect(body.accessToken).toBeDefined()
       expect(body.refreshToken).toBeDefined()
     })
@@ -115,6 +117,7 @@ describe('auth routes', () => {
 
       expect(res.statusCode).toBe(200)
       const body = res.json()
+
       expect(body.accessToken).toBeDefined()
       expect(body.refreshToken).toBeDefined()
     })
@@ -172,6 +175,7 @@ describe('auth routes', () => {
 
       expect(res.statusCode).toBe(200)
       const body = res.json()
+
       expect(body.accessToken).toBeDefined()
       expect(body.refreshToken).toBeDefined()
       expect(body.refreshToken).not.toBe(refreshToken)

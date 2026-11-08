@@ -23,6 +23,7 @@ export async function createSmtpEmailProvider(
   return {
     async send({ to, subject, html }) {
       const info = await transport.sendMail({ from, to, subject, html })
+
       log.info({ subject, messageId: info.messageId }, 'Email sent')
     },
   }

@@ -48,6 +48,7 @@ export function createRateLimiter(
         windowMs,
         limit,
       })
+
       return { ...decision, limit, resetMs: windowMs - elapsedMs }
     },
   }

@@ -14,6 +14,7 @@ import {
 // Real templates by default; a test can make one reject to simulate a render failure.
 vi.mock('../emails/index.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../emails/index.js')>()
+
   return { ...actual, welcomeEmail: vi.fn(actual.welcomeEmail) }
 })
 
@@ -119,6 +120,7 @@ describe('NotificationService', () => {
 
   it('logs a failed send with the event context and does not rethrow', async () => {
     const error = new Error('SMTP down')
+
     email.failWith(error)
 
     await expect(
@@ -142,6 +144,7 @@ describe('NotificationService', () => {
 
   it('logs a failed render and does not send or rethrow', async () => {
     const error = new Error('render failed')
+
     vi.mocked(welcomeEmail).mockRejectedValueOnce(error)
 
     await expect(

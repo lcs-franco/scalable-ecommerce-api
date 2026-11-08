@@ -17,6 +17,7 @@ export async function createTestApp() {
     logger: createLogger({ service: 'product-service', level: 'silent' }),
     internalServiceToken: 'test-internal-token',
   })
+
   await app.ready()
 
   return { app, db, pool }

@@ -58,11 +58,14 @@ export function createOrderService(deps: IDeps) {
   ) {
     const { userId, email } = user
     const s = createSaga()
+
     return s.run(async () => {
       const cart = await cartClient.checkout(userId, requestId)
+
       s.addCompensation(() => cartClient.restore(cart, userToken, requestId))
 
       const validatedItems = await productClient.validateOrder(cart, requestId)
+
       s.addCompensation(() =>
         productClient.restoreStock(validatedItems, requestId),
       )

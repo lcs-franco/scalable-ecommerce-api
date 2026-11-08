@@ -58,6 +58,7 @@ describe('service clients', () => {
         const error = await cartClient()
           .checkout('user-1')
           .catch((e: unknown) => e)
+
         expect(error).not.toBeInstanceOf(ApplicationError)
         expect((error as Error).message).toMatch(
           `Cart checkout failed: ${status}`,
@@ -89,6 +90,7 @@ describe('service clients', () => {
       const error = await productClient()
         .validateOrder(items)
         .catch((e: unknown) => e)
+
       expect(error).toBeInstanceOf(InsufficientStock)
       expect((error as Error).message).toBe(
         'Insufficient stock for product product-1',
@@ -116,6 +118,7 @@ describe('service clients', () => {
         const error = await productClient()
           .validateOrder(items)
           .catch((e: unknown) => e)
+
         expect(error).not.toBeInstanceOf(ApplicationError)
         expect((error as Error).message).toMatch(
           `Product validation failed: ${status}`,

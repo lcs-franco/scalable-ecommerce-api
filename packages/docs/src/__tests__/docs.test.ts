@@ -4,6 +4,7 @@ import { docsPlugin } from '../index.js'
 
 async function getSpec() {
   const app = Fastify()
+
   await app.register(docsPlugin, { title: 'test' })
   app.get('/private', async () => ({}))
   app.get('/public', { config: { skipAuth: true } }, async () => ({}))
@@ -12,7 +13,9 @@ async function getSpec() {
   const spec = app.swagger() as {
     paths: Record<string, Record<string, { security?: unknown[] }>>
   }
+
   await app.close()
+
   return spec
 }
 

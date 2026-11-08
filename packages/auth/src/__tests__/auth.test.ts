@@ -14,12 +14,14 @@ async function createTestApp(
   },
 ) {
   const app = Fastify()
+
   await app.register(authPlugin, { internalToken })
   app.get('/private', async () => ({ ok: true }))
   app.post('/internal', { config: { internal: true } }, async () => ({
     ok: true,
   }))
   await app.ready()
+
   return app
 }
 
@@ -114,6 +116,7 @@ describe('route registration', () => {
 
   it('fails for an internal route that also sets skipAuth', async () => {
     const instance = Fastify()
+
     await instance.register(authPlugin, { internalToken: INTERNAL_TOKEN })
 
     expect(() =>

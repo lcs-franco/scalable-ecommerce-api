@@ -59,10 +59,12 @@ export function createStripeProcessor(
         err.param === 'payment_method'
       ) {
         log.warn(err, 'invalid payment method')
+
         return { success: false, reason: 'invalid payment method' }
       }
 
       log.error(err, 'stripe payment failed')
+
       return { success: false, reason: 'payment provider error' }
     }
   }

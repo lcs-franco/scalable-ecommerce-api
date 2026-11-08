@@ -38,6 +38,7 @@ describe('request id', () => {
     const res = await app.inject({ method: 'GET', url: '/id', headers })
 
     const { id } = res.json<{ id: string }>()
+
     expect(id).toMatch(UUID)
     expect(id).not.toBe('not-a-uuid')
     expect(res.headers['x-request-id']).toBe(id)

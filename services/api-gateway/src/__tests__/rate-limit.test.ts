@@ -52,7 +52,9 @@ function get(url: string, opts: { ip?: string; bearer?: string } = {}) {
 
 async function times(n: number, request: () => ReturnType<typeof get>) {
   const responses = []
+
   for (let i = 0; i < n; i++) responses.push(await request())
+
   return responses
 }
 
@@ -71,6 +73,7 @@ describe('rate limiting', () => {
     expect(responses[0].headers['x-ratelimit-reset']).toBe('60')
 
     const limited = responses[3]
+
     expect(limited.json()).toMatchObject({ error: 'TOO_MANY_REQUESTS' })
     expect(limited.headers['retry-after']).toBe('60')
   })
@@ -137,6 +140,7 @@ describe('rate limiting', () => {
       enableOfflineQueue: false,
       maxRetriesPerRequest: 0,
     })
+
     broken.on('error', () => {})
     const unprotected = await createTestApp({ redis: broken, upstreams })
 
@@ -144,6 +148,7 @@ describe('rate limiting', () => {
       method: 'GET',
       url: '/api/products',
     })
+
     await unprotected.close()
     broken.disconnect()
 

@@ -13,6 +13,7 @@ export async function registerIdentity(
 
   app.addHook('onRequest', async (request) => {
     if (!request.headers.authorization) return
+
     try {
       await request.jwtVerify()
       request.identity = request.user

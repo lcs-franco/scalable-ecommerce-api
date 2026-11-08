@@ -98,6 +98,7 @@ describe('outbox relay', () => {
 
   it('publishes pending events in order with their key and event id', async () => {
     const orderId = crypto.randomUUID()
+
     await statusChanged(orderId, 'paid')
     await statusChanged(orderId, 'shipped')
     const { producer, published } = fakeProducer()
@@ -124,6 +125,7 @@ describe('outbox relay', () => {
 
   it('stops at a failed publish, logs it and retries from there on the next tick', async () => {
     const orderId = crypto.randomUUID()
+
     await statusChanged(orderId, 'paid')
     await statusChanged(orderId, 'shipped')
     let brokerDown = true
@@ -214,6 +216,7 @@ describe('outbox relay', () => {
     expect(published).toHaveLength(1)
 
     const next = fakeProducer()
+
     await createOutboxRelay({
       db,
       producer: next.producer,
@@ -277,6 +280,7 @@ describe('outbox relay', () => {
     let signalStarted: () => void = () => {}
     const started = new Promise<void>((r) => (signalStarted = r))
     const slowDb: OutboxDb = Object.create(db)
+
     slowDb.transaction = async (...args) => {
       signalStarted()
       await new Promise((r) => setTimeout(r, 50))

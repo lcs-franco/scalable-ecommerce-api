@@ -28,6 +28,7 @@ export function fakeProcessor() {
     name: 'stripe',
     processPayment: async (input) => {
       calls.push(input)
+
       return next
     },
   }
@@ -50,6 +51,7 @@ export async function createTestApp() {
     logger: createLogger({ service: 'payment-service', level: 'silent' }),
     processor: fake.processor,
   })
+
   await app.ready()
 
   return { app, db, pool, fake }

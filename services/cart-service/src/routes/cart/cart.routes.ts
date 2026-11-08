@@ -23,7 +23,9 @@ export async function cartRoutes(fastify: FastifyInstance, deps: IDeps) {
     { schema: { body: AddItemBodySchema } },
     async (request, reply) => {
       const { productId, quantity } = request.body
+
       await cartService.addItem(request.user.userId, productId, quantity)
+
       return reply.status(201).send({ message: 'Item added to cart' })
     },
   )
@@ -42,6 +44,7 @@ export async function cartRoutes(fastify: FastifyInstance, deps: IDeps) {
         request.params.productId,
         request.body.quantity,
       )
+
       return reply.send({ message: 'Cart updated' })
     },
   )
@@ -54,6 +57,7 @@ export async function cartRoutes(fastify: FastifyInstance, deps: IDeps) {
         request.user.userId,
         request.params.productId,
       )
+
       return reply.status(204).send()
     },
   )
@@ -66,11 +70,13 @@ export async function cartRoutes(fastify: FastifyInstance, deps: IDeps) {
 
     const productIds = items.map((i) => i.productId)
     const products = await productClient.fetchProducts(productIds, request.id)
+
     return reply.send(cartService.enrichItems(items, products))
   })
 
   app.delete('/cart', async (request, reply) => {
     await cartService.clear(request.user.userId)
+
     return reply.status(204).send()
   })
 
@@ -83,7 +89,9 @@ export async function cartRoutes(fastify: FastifyInstance, deps: IDeps) {
       if (!userId) {
         return reply.status(400).send({ error: 'x-user-id header required' })
       }
+
       const items = await cartService.checkout(userId)
+
       return reply.send({ items })
     },
   )

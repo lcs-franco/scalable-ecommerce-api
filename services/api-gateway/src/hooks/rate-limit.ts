@@ -20,14 +20,17 @@ export function registerRateLimit(
       : [`ratelimit:ip:${request.ip}`, opts.limits.anonymous]
 
     let result
+
     try {
       result = await opts.limiter.hit(key, limit)
     } catch (err) {
       request.log.warn({ err }, 'rate limiter unavailable, request allowed')
+
       return
     }
 
     const resetSeconds = Math.ceil(result.resetMs / 1000)
+
     reply.headers({
       'x-ratelimit-limit': result.limit,
       'x-ratelimit-remaining': result.remaining,

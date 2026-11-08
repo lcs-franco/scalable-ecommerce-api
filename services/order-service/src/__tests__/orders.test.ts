@@ -22,6 +22,7 @@ describe('order routes', () => {
 
   beforeAll(async () => {
     const ctx = await createTestApp()
+
     app = ctx.app
     db = ctx.db
     pool = ctx.pool
@@ -51,6 +52,7 @@ describe('order routes', () => {
       url: `/orders/${orderId}`,
       headers: { authorization: `Bearer ${adminToken(app)}` },
     })
+
     return res.json().status
   }
 
@@ -80,6 +82,7 @@ describe('order routes', () => {
     fn: (ctx: Awaited<ReturnType<typeof createTestApp>>) => Promise<void>,
   ) {
     const ctx = await createTestApp(overrides)
+
     try {
       await fn(ctx)
     } finally {
@@ -94,6 +97,7 @@ describe('order routes', () => {
 
       expect(res.statusCode).toBe(201)
       const body = res.json()
+
       expect(body.id).toBeDefined()
       expect(body.userId).toBe('00000000-0000-0000-0000-000000000002')
       expect(body.status).toBe('pending')
@@ -108,6 +112,7 @@ describe('order routes', () => {
       const requestIds: Record<string, string | undefined> = {}
       const cartClient = mockCartClient()
       const originalCheckout = cartClient.checkout
+
       cartClient.checkout = async (userId, requestId) => {
         requestIds.checkout = requestId
 
@@ -116,6 +121,7 @@ describe('order routes', () => {
 
       const productClient = mockProductClient()
       const originalValidateOrder = productClient.validateOrder
+
       productClient.validateOrder = async (items, requestId) => {
         requestIds.validateOrder = requestId
 
@@ -206,6 +212,7 @@ describe('order routes', () => {
         method: 'POST',
         url: '/orders',
       })
+
       expect(res.statusCode).toBe(401)
     })
 
@@ -215,11 +222,13 @@ describe('order routes', () => {
         url: '/orders',
         headers: { authorization: `Bearer ${adminToken(target)}` },
       })
+
       return res.json().items
     }
 
     it('should return 400 CART_EMPTY and create nothing when the cart is empty', async () => {
       const cartClient = mockCartClient()
+
       cartClient.checkout = async () => {
         throw new CartEmpty()
       }
@@ -240,10 +249,12 @@ describe('order routes', () => {
     it('should return 409 INSUFFICIENT_STOCK and restore the cart', async () => {
       let cartRestored = false
       const cartClient = mockCartClient()
+
       cartClient.restore = async () => {
         cartRestored = true
       }
       const productClient = mockProductClient()
+
       productClient.validateOrder = async () => {
         throw new InsufficientStock(
           `Insufficient stock for product ${PRODUCT_1}`,
@@ -267,10 +278,12 @@ describe('order routes', () => {
     it('should return 500 and restore the cart on an unexpected product failure', async () => {
       let cartRestored = false
       const cartClient = mockCartClient()
+
       cartClient.restore = async () => {
         cartRestored = true
       }
       const productClient = mockProductClient()
+
       productClient.validateOrder = async () => {
         throw new Error('Product validation failed: 502 Bad Gateway')
       }
@@ -297,6 +310,7 @@ describe('order routes', () => {
 
       expect(res.statusCode).toBe(200)
       const body = res.json()
+
       expect(body.items).toHaveLength(2)
       expect(body.total).toBe(2)
     })
@@ -356,6 +370,7 @@ describe('order routes', () => {
 
       expect(res.statusCode).toBe(200)
       const body = res.json()
+
       expect(body.id).toBe(orderId)
       expect(body.items).toHaveLength(2)
     })
@@ -407,6 +422,7 @@ describe('order routes', () => {
       const orderId = createRes.json().id
 
       const ctx = await createTestApp()
+
       try {
         await ctx.app.orderService.markAsPaid(orderId)
 
@@ -443,6 +459,7 @@ describe('order routes', () => {
       const before = await statusChanges()
 
       const ctx = await createTestApp()
+
       try {
         await ctx.app.orderService.markAsPaid(orderId)
         expect(await statusChanges(ctx.db)).toEqual(before)
@@ -496,6 +513,7 @@ describe('order routes', () => {
     it('should rethrow and keep the order pending when restore fails', async () => {
       const orderId = (await placeTestOrder()).json().id
       const productClient = mockProductClient()
+
       productClient.restoreOrderStock = async () => {
         throw new Error('product-service down')
       }
@@ -516,6 +534,7 @@ describe('order routes', () => {
 
       await withApp({ productClient }, async (ctx) => {
         let paid: Promise<void> | undefined
+
         productClient.restoreOrderStock = async () => {
           paid = ctx.app.orderService.markAsPaid(orderId)
           await new Promise((resolve) => setTimeout(resolve, 100))
@@ -535,6 +554,7 @@ describe('order routes', () => {
 
     it('should do nothing when order is not pending', async () => {
       const orderId = (await placeTestOrder()).json().id
+
       await setStatus(orderId, 'paid')
       const before = await statusChanges()
       const productClient = mockProductClient()
@@ -573,6 +593,7 @@ describe('order routes', () => {
     it('should forward the request id to the stock restore', async () => {
       const requestIds: (string | undefined)[] = []
       const productClient = mockProductClient()
+
       productClient.restoreOrderStock = async (_orderId, _items, requestId) => {
         requestIds.push(requestId)
       }
@@ -599,6 +620,7 @@ describe('order routes', () => {
 
       await withApp({ productClient }, async (ctx) => {
         const orderId = (await placeTestOrder(undefined, ctx.app)).json().id
+
         await setStatus(orderId, 'paid', ctx.app)
         await setStatus(orderId, 'shipped', ctx.app)
 
@@ -611,6 +633,7 @@ describe('order routes', () => {
 
     it('should fail and keep the order unchanged when restore fails', async () => {
       const productClient = mockProductClient()
+
       productClient.restoreOrderStock = async () => {
         throw new Error('product-service down')
       }

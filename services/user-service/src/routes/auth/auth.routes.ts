@@ -36,6 +36,7 @@ export async function authRoutes(fastify: FastifyInstance, deps: IDeps) {
     async (request, reply) => {
       const { email, password } = request.body
       const tokens = await authService.login(email, password)
+
       return reply.send(tokens)
     },
   )
@@ -46,13 +47,16 @@ export async function authRoutes(fastify: FastifyInstance, deps: IDeps) {
     async (request, reply) => {
       const { refreshToken } = request.body
       const tokens = await authService.refresh(refreshToken)
+
       return reply.send(tokens)
     },
   )
 
   app.post('/logout', async (request, reply) => {
     const { userId } = request.user
+
     await authService.logout(userId)
+
     return reply.status(204).send()
   })
 }

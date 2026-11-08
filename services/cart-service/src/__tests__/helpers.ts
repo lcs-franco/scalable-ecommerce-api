@@ -5,6 +5,7 @@ import { buildApp } from '../app.js'
 process.env.JWT_SECRET ??= 'test-secret-must-be-at-least-32-chars!'
 
 const TEST_REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6380'
+
 export const TEST_INTERNAL_TOKEN = 'test-internal-service-token'
 
 export async function createTestApp() {
@@ -16,6 +17,7 @@ export async function createTestApp() {
     productServiceUrl: 'http://localhost:19999',
     internalServiceToken: TEST_INTERNAL_TOKEN,
   })
+
   await app.ready()
 
   return { app, redis }

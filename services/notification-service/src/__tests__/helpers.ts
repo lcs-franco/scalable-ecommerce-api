@@ -23,6 +23,7 @@ export function fakeEmailProvider() {
   const provider: IEmailProvider = {
     send: async (message) => {
       if (failure) throw failure
+
       sent.push(message)
     },
   }

@@ -57,6 +57,7 @@ describe('paymentService.processOrderPlaced', () => {
     await ctx.app.paymentService.processOrderPlaced(event)
 
     const row = await findPayment(event.orderId)
+
     expect(row.status).toBe('confirmed')
     expect(row.amount).toBe(3000)
     expect(row.userId).toBe(event.userId)
@@ -108,6 +109,7 @@ describe('paymentService.processOrderPlaced', () => {
     await ctx.app.paymentService.processOrderPlaced(event)
 
     const row = await findPayment(event.orderId)
+
     expect(row.status).toBe('failed')
     expect(row.failureReason).toBe('Your card was declined.')
     expect(row.providerPaymentId).toBe('pi_declined')
@@ -129,6 +131,7 @@ describe('paymentService.processOrderPlaced', () => {
 
   it('enqueues no second event and does not charge again on a terminal redelivery', async () => {
     const event = orderPlacedEvent()
+
     await ctx.app.paymentService.processOrderPlaced(event)
     const first = await outboxEvents(ctx.db)
 
@@ -145,6 +148,7 @@ describe('paymentService.processOrderPlaced', () => {
     const leftover = await insertPendingPayment(event)
 
     const original = ctx.fake.processor.processPayment
+
     ctx.fake.processor.processPayment = async () => {
       await ctx.db
         .update(payments)
@@ -173,6 +177,7 @@ describe('paymentService.processOrderPlaced', () => {
     await ctx.app.paymentService.processOrderPlaced(event)
 
     const row = await findPayment(event.orderId)
+
     expect(row.id).toBe(leftover.id)
     expect(row.status).toBe('confirmed')
     expect(ctx.fake.calls).toHaveLength(1)

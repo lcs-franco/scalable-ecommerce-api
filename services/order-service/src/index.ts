@@ -40,11 +40,13 @@ async function main() {
   })
 
   const producer = createProducer(kafka)
+
   await producer.connect()
 
   const consumer = createConsumer(kafka, 'order-service', log, {
     onProcessed: consumerMetrics(),
   })
+
   await consumer.connect()
 
   const cartClient = createCartClient({

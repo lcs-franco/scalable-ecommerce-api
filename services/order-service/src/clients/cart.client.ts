@@ -30,11 +30,14 @@ export function createCartClient(opts: ICartClientOptions) {
       if (upstream.code === ErrorCode.CART_EMPTY) {
         throw new CartEmpty()
       }
+
       throw new Error(
         `Cart checkout failed: ${upstream.status} ${upstream.text}`,
       )
     }
+
     const body = (await res.json()) as { items: ICartItem[] }
+
     return body.items
   }
 

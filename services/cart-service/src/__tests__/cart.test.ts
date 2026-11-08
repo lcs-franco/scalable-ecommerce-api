@@ -13,6 +13,7 @@ let token: string
 
 beforeAll(async () => {
   const ctx = await createTestApp()
+
   app = ctx.app
   redis = ctx.redis
   token = userToken(app)
@@ -46,6 +47,7 @@ describe('POST /cart/items', () => {
       'cart:user-id',
       '00000000-0000-0000-0000-000000000001',
     )
+
     expect(qty).toBe('2')
   })
 
@@ -66,6 +68,7 @@ describe('POST /cart/items', () => {
     })
 
     const qty = await redis.hget('cart:user-id', productId)
+
     expect(qty).toBe('2')
   })
 
@@ -78,6 +81,7 @@ describe('POST /cart/items', () => {
         quantity: 1,
       },
     })
+
     expect(res.statusCode).toBe(401)
   })
 
@@ -88,6 +92,7 @@ describe('POST /cart/items', () => {
       headers: { authorization: `Bearer ${token}` },
       payload: { productId: 'not-a-uuid', quantity: 0 },
     })
+
     expect(res.statusCode).toBe(400)
   })
 })
@@ -107,6 +112,7 @@ describe('PATCH /cart/items/:productId', () => {
 
     expect(res.statusCode).toBe(200)
     const qty = await redis.hget('cart:user-id', productId)
+
     expect(qty).toBe('5')
   })
 
@@ -150,6 +156,7 @@ describe('DELETE /cart/items/:productId', () => {
 
     expect(res.statusCode).toBe(204)
     const exists = await redis.hexists('cart:user-id', productId)
+
     expect(exists).toBe(0)
   })
 
@@ -178,6 +185,7 @@ describe('GET /cart', () => {
 
   it('returns cart items with unavailable flag when product-service is down', async () => {
     const productId = '00000000-0000-0000-0000-000000000001'
+
     await redis.hset('cart:user-id', productId, '2')
 
     const res = await app.inject({
@@ -188,6 +196,7 @@ describe('GET /cart', () => {
 
     expect(res.statusCode).toBe(200)
     const body = res.json()
+
     expect(body.items).toHaveLength(1)
     expect(body.items[0]).toEqual({
       productId,
@@ -214,6 +223,7 @@ describe('DELETE /cart', () => {
 
     expect(res.statusCode).toBe(204)
     const keys = await redis.hgetall('cart:user-id')
+
     expect(Object.keys(keys)).toHaveLength(0)
   })
 })
@@ -227,6 +237,7 @@ describe('POST /cart/checkout', () => {
   it('returns cart items and clears cart atomically', async () => {
     const p1 = '00000000-0000-0000-0000-000000000001'
     const p2 = '00000000-0000-0000-0000-000000000002'
+
     await redis.hset('cart:user-id', p1, '2')
     await redis.hset('cart:user-id', p2, '1')
 
@@ -238,6 +249,7 @@ describe('POST /cart/checkout', () => {
 
     expect(res.statusCode).toBe(200)
     const body = res.json()
+
     expect(body.items).toHaveLength(2)
     expect(body.items).toEqual(
       expect.arrayContaining([
@@ -247,6 +259,7 @@ describe('POST /cart/checkout', () => {
     )
 
     const remaining = await redis.hgetall('cart:user-id')
+
     expect(Object.keys(remaining)).toHaveLength(0)
   })
 
@@ -308,6 +321,7 @@ describe('TTL', () => {
     })
 
     const ttl = await redis.ttl('cart:user-id')
+
     expect(ttl).toBeGreaterThan(604800 - 10)
     expect(ttl).toBeLessThanOrEqual(604800)
   })

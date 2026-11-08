@@ -39,17 +39,20 @@ async function main() {
   })
 
   const producer = createProducer(kafka)
+
   await producer.connect()
 
   const consumer = createConsumer(kafka, 'payment-service', log, {
     onProcessed: consumerMetrics(),
   })
+
   await consumer.connect()
 
   const processor = createStripeProcessor({
     stripe: new Stripe(config.STRIPE_SECRET_KEY, { maxNetworkRetries: 2 }),
     log,
   })
+
   log.info(`Payment processor: ${processor.name} (test mode)`)
 
   const app = await buildApp({ db, logger: log, processor })

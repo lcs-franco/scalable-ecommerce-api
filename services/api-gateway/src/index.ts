@@ -12,6 +12,7 @@ async function main() {
     maxRetriesPerRequest: 1,
     commandTimeout: 500,
   })
+
   await redis.ping()
 
   const app = await buildApp({

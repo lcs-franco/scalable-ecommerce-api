@@ -38,11 +38,14 @@ export function createProductClient(opts: IProductClientOptions) {
       if (upstream.code === ErrorCode.INSUFFICIENT_STOCK) {
         throw new InsufficientStock(upstream.message)
       }
+
       throw new Error(
         `Product validation failed: ${upstream.status} ${upstream.text}`,
       )
     }
+
     const body = (await res.json()) as { items: IValidatedItem[] }
+
     return body.items
   }
 

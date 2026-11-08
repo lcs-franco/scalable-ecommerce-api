@@ -33,6 +33,7 @@ export async function productRoutes(fastify: FastifyInstance, deps: IDeps) {
     },
     async (request, reply) => {
       const result = await productService.list(request.query)
+
       return reply.send(result)
     },
   )
@@ -42,6 +43,7 @@ export async function productRoutes(fastify: FastifyInstance, deps: IDeps) {
     { config: { skipAuth: true }, schema: { params: ProductParamsSchema } },
     async (request, reply) => {
       const product = await productService.findById(request.params.id)
+
       return reply.send(product)
     },
   )
@@ -52,6 +54,7 @@ export async function productRoutes(fastify: FastifyInstance, deps: IDeps) {
     async (request, reply) => {
       requireAdmin(request.user.role)
       const product = await productService.create(request.body)
+
       return reply.status(201).send(product)
     },
   )
@@ -70,6 +73,7 @@ export async function productRoutes(fastify: FastifyInstance, deps: IDeps) {
         request.params.id,
         request.body,
       )
+
       return reply.send(product)
     },
   )
@@ -80,6 +84,7 @@ export async function productRoutes(fastify: FastifyInstance, deps: IDeps) {
     async (request, reply) => {
       requireAdmin(request.user.role)
       await productService.remove(request.params.id)
+
       return reply.status(204).send()
     },
   )
@@ -92,6 +97,7 @@ export async function productRoutes(fastify: FastifyInstance, deps: IDeps) {
     },
     async (request, reply) => {
       const validated = await productService.validateOrder(request.body.items)
+
       return reply.send({ items: validated })
     },
   )
@@ -105,6 +111,7 @@ export async function productRoutes(fastify: FastifyInstance, deps: IDeps) {
     },
     async (request, reply) => {
       await productService.restoreStock(request.body.items)
+
       return reply.send({ message: 'Stock restored' })
     },
   )
@@ -120,6 +127,7 @@ export async function productRoutes(fastify: FastifyInstance, deps: IDeps) {
         request.params.orderId,
         request.body.items,
       )
+
       return reply.send({ message: 'Stock restored' })
     },
   )

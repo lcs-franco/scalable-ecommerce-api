@@ -28,6 +28,7 @@ export async function buildApp(opts: IBuildAppOptions) {
     loggerInstance: opts.logger,
     genReqId: genRequestId,
   })
+
   app.setValidatorCompiler(validatorCompiler)
   app.setSerializerCompiler(serializerCompiler)
 

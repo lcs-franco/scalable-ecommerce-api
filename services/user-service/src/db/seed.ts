@@ -15,6 +15,7 @@ async function seed() {
   }
 
   const { db, pool } = createDb(config.DATABASE_URL)
+
   await runMigrations(db)
 
   const existing = await db
@@ -28,6 +29,7 @@ async function seed() {
     console.log('admin user already exists, skipping seed')
   } else {
     const passwordHash = await bcrypt.hash(adminPassword, 12)
+
     await db.insert(users).values({
       email: ADMIN_EMAIL,
       passwordHash,

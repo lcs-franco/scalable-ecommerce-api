@@ -111,6 +111,7 @@ describe('setupConsumers on the broker', () => {
     ])
     const subjects = () =>
       email.sent.filter((m) => m.to === recipient.email).map((m) => m.subject)
+
     await vi.waitFor(() => expect(subjects()).toHaveLength(5), {
       timeout: 10_000,
     })

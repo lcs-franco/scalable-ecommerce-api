@@ -8,6 +8,7 @@ async function createCategory(app: any) {
     headers: { authorization: `Bearer ${adminToken(app)}` },
     payload: { name: `Cat-${Date.now()}` },
   })
+
   return res.json()
 }
 
@@ -25,6 +26,7 @@ async function createProduct(app: any, categoryId: string, overrides = {}) {
       ...overrides,
     },
   })
+
   return res.json()
 }
 
@@ -35,6 +37,7 @@ describe('product routes', () => {
 
   beforeAll(async () => {
     const ctx = await createTestApp()
+
     app = ctx.app
     db = ctx.db
     pool = ctx.pool
@@ -91,6 +94,7 @@ describe('product routes', () => {
   describe('GET /products', () => {
     it('should list products with pagination', async () => {
       const category = await createCategory(app)
+
       await createProduct(app, category.id, { name: 'Product A' })
       await createProduct(app, category.id, { name: 'Product B' })
 
@@ -107,6 +111,7 @@ describe('product routes', () => {
     it('should filter by categoryId', async () => {
       const cat1 = await createCategory(app)
       const cat2 = await createCategory(app)
+
       await createProduct(app, cat1.id, { name: 'In Cat1' })
       await createProduct(app, cat2.id, { name: 'In Cat2' })
 
@@ -121,6 +126,7 @@ describe('product routes', () => {
 
     it('should search by q param', async () => {
       const category = await createCategory(app)
+
       await createProduct(app, category.id, { name: 'Wireless Headphones' })
       await createProduct(app, category.id, { name: 'USB Cable' })
 
@@ -208,6 +214,7 @@ describe('product routes', () => {
         method: 'GET',
         url: `/products/${product.id}`,
       })
+
       expect(after.json().stock).toBe(10)
     })
 
@@ -228,6 +235,7 @@ describe('product routes', () => {
 
       expect(res.statusCode).toBe(200)
       const body = res.json()
+
       expect(body.items).toHaveLength(1)
       expect(body.items[0]).toMatchObject({
         productId: product.id,
@@ -240,6 +248,7 @@ describe('product routes', () => {
         method: 'GET',
         url: `/products/${product.id}`,
       })
+
       expect(after.json().stock).toBe(7)
     })
 
@@ -287,6 +296,7 @@ describe('product routes', () => {
         method: 'GET',
         url: `/products/${p1.id}`,
       })
+
       expect(after.json().stock).toBe(10)
     })
 
@@ -341,6 +351,7 @@ describe('product routes', () => {
         method: 'GET',
         url: `/products/${product.id}`,
       })
+
       expect(after.json().stock).toBe(10)
     })
 
@@ -385,6 +396,7 @@ describe('product routes', () => {
         method: 'GET',
         url: `/products/${productId}`,
       })
+
       return res.json().stock
     }
 

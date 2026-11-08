@@ -9,8 +9,10 @@ export async function readUpstreamError(
   res: Response,
 ): Promise<IUpstreamError> {
   const text = await res.text()
+
   try {
     const body = JSON.parse(text) as { error?: unknown; message?: unknown }
+
     return {
       status: res.status,
       text,

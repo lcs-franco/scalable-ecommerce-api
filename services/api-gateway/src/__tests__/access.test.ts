@@ -16,6 +16,7 @@ let closeUpstreams: () => Promise<unknown>
 beforeAll(async () => {
   redis = createRedis()
   const started = await startUpstreams()
+
   closeUpstreams = started.close
   app = await createTestApp({ redis, upstreams: started.upstreams })
 })
