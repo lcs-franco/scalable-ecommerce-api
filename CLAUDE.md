@@ -98,6 +98,7 @@ Packages must be built (`pnpm build`) before services can import them.
 - **Config validation:** Each service validates env vars at startup with Zod. Missing/invalid → process exits immediately.
 - **Metrics:** `buildApp` registers `metricsPlugin`; `index.ts` calls `startMetricsServer` on `METRICS_PORT` (9464) before `listen` and wires the helpers it owns (pg pool, outbox, consumer, upstream). `/metrics` is never on the app port: the metrics port is only on the compose network, so it has no token.
 - **Health:** every service exposes `GET /health` (liveness, `skipAuth`, hidden from docs). Startup is fail-fast (migrations and Kafka connect run before `listen`), so compose uses it as the readiness signal.
+- **Style:** Blank lines between steps are enforced by `@stylistic/padding-line-between-statements`; `pnpm lint` fixes them.
 
 ### Containers
 
