@@ -9,6 +9,7 @@ describe('seedSampleData', () => {
 
   beforeAll(async () => {
     const ctx = await createTestApp()
+
     app = ctx.app
     db = ctx.db
     pool = ctx.pool

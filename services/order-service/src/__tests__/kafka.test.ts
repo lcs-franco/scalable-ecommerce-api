@@ -70,6 +70,7 @@ describe('order-service on the broker', () => {
       headers: { authorization: `Bearer ${userToken(ctx.app)}` },
       payload: { paymentMethodId: 'pm_card_visa' },
     })
+
     return res.json().id
   }
 
@@ -79,6 +80,7 @@ describe('order-service on the broker', () => {
       url: `/orders/${orderId}`,
       headers: { authorization: `Bearer ${adminToken(ctx.app)}` },
     })
+
     return res.json().status
   }
 

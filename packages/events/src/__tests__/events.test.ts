@@ -77,6 +77,7 @@ describe('events against the broker', () => {
     const skipped = log.error.mock.calls.filter(
       ([, message]) => message === 'Skipping poison message',
     )
+
     expect(skipped).toHaveLength(2)
     expect(skipped[0][0]).toMatchObject({ topic: Topics.USER_REGISTERED })
     await consumer.disconnect()

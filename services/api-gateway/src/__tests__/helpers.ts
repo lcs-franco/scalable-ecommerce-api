@@ -25,6 +25,7 @@ export interface IEcho {
 
 async function startEchoServer(upstream: UpstreamName) {
   const server = Fastify()
+
   server.removeAllContentTypeParsers()
   server.addContentTypeParser('*', { parseAs: 'string' }, (_req, body, done) =>
     done(null, body),
@@ -32,6 +33,7 @@ async function startEchoServer(upstream: UpstreamName) {
   server.all('/*', async (request, reply) => {
     const { delayMs } = request.query as { delayMs?: string }
     if (delayMs) await new Promise((r) => setTimeout(r, Number(delayMs)))
+
     const echo: IEcho = {
       upstream,
       method: request.method,
@@ -39,10 +41,12 @@ async function startEchoServer(upstream: UpstreamName) {
       headers: request.headers,
       body: (request.body as string | undefined) ?? '',
     }
+
     return reply.status(200).send(echo)
   })
   await server.listen({ port: 0, host: '127.0.0.1' })
   const { port } = server.server.address() as { port: number }
+
   return { server, url: `http://127.0.0.1:${port}` }
 }
 
@@ -52,6 +56,7 @@ export async function startUpstreams() {
     UPSTREAM_NAMES.map((name, i) => [name, started[i].url]),
   ) as Upstreams
   const close = () => Promise.all(started.map(({ server }) => server.close()))
+
   return { upstreams, close }
 }
 
@@ -75,7 +80,9 @@ export async function createTestApp(opts: {
     upstreamTimeoutMs: opts.upstreamTimeoutMs ?? 2000,
     now: opts.now,
   })
+
   await app.ready()
+
   return app
 }
 

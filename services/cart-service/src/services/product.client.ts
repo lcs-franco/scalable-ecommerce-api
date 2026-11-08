@@ -20,6 +20,7 @@ export function createProductClient(baseUrl: string) {
         })
         if (res.ok) {
           const data = (await res.json()) as IProductInfo
+
           results.set(id, data)
         }
       } catch {
@@ -28,6 +29,7 @@ export function createProductClient(baseUrl: string) {
     })
 
     await Promise.all(fetches)
+
     return results
   }
 

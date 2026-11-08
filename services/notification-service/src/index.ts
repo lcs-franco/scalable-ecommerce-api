@@ -33,9 +33,11 @@ async function main() {
   const consumer = createConsumer(kafka, 'notification-service', log, {
     onProcessed: consumerMetrics(),
   })
+
   await consumer.connect()
 
   const redis = createRedis(config.REDIS_URL)
+
   await redis.ping()
 
   const app = await buildApp({ logger: log })

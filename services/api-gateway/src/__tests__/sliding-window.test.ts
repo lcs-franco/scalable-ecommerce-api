@@ -74,6 +74,7 @@ describe('evaluateWindow', () => {
       windowMs,
       limit: 10,
     })
+
     expect(Number.isInteger(remaining)).toBe(true)
     expect(remaining).toBeGreaterThanOrEqual(0)
     expect(remaining).toBeLessThanOrEqual(10 - 1)

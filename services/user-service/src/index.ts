@@ -26,6 +26,7 @@ async function main() {
     logLevel: logLevel.DEBUG,
   })
   const producer = createProducer(kafka)
+
   await producer.connect()
 
   const app = await buildApp({ db, logger: log })

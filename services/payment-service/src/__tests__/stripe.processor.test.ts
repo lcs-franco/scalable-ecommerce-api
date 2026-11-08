@@ -110,6 +110,7 @@ describe('createStripeProcessor', () => {
       param: 'payment_method',
       message: "No such PaymentMethod: 'pm_nope'",
     })
+
     create.mockRejectedValue(err)
 
     await expect(processor.processPayment(INPUT)).resolves.toEqual({
@@ -142,6 +143,7 @@ describe('createStripeProcessor', () => {
       type: 'api_error',
       message: 'socket hang up',
     })
+
     create.mockRejectedValue(err)
 
     await expect(processor.processPayment(INPUT)).resolves.toEqual({

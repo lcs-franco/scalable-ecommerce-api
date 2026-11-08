@@ -8,6 +8,7 @@ describe('profile routes', () => {
 
   beforeAll(async () => {
     const ctx = await createTestApp()
+
     app = ctx.app
     db = ctx.db
     pool = ctx.pool
@@ -32,6 +33,7 @@ describe('profile routes', () => {
         name: 'Profile User',
       },
     })
+
     return res.json().accessToken as string
   }
 
@@ -47,6 +49,7 @@ describe('profile routes', () => {
 
       expect(res.statusCode).toBe(200)
       const body = res.json()
+
       expect(body.email).toBe('profile@example.com')
       expect(body.name).toBe('Profile User')
       expect(body.role).toBe('user')

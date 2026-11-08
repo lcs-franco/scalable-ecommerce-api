@@ -56,6 +56,7 @@ describe('routing', () => {
 
     expect(res.statusCode).toBe(200)
     const echo = res.json<IEcho>()
+
     expect(echo).toMatchObject({ upstream, method, url: upstreamUrl })
   })
 
@@ -138,6 +139,7 @@ describe('headers', () => {
     })
 
     const anonymousHeaders = anonymous.json<IEcho>().headers
+
     expect(anonymousHeaders['x-user-id']).toBeUndefined()
     expect(anonymousHeaders['x-user-role']).toBeUndefined()
     expect(anonymousHeaders['x-internal-token']).toBeUndefined()
@@ -154,6 +156,7 @@ describe('headers', () => {
     const res = await app.inject({ method: 'GET', url: '/api/products' })
 
     const id = res.headers['x-request-id']
+
     expect(id).toMatch(/^[0-9a-f-]{36}$/)
     expect(res.json<IEcho>().headers['x-request-id']).toBe(id)
   })
@@ -186,6 +189,7 @@ describe('upstream failures', () => {
     })
 
     const res = await down.inject({ method: 'GET', url: '/api/products' })
+
     await down.close()
 
     expect(res.statusCode).toBe(502)
@@ -204,6 +208,7 @@ describe('upstream failures', () => {
       method: 'GET',
       url: '/api/products?delayMs=3000',
     })
+
     await slow.close()
 
     expect(res.statusCode).toBe(504)

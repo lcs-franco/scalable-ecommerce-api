@@ -15,11 +15,13 @@ export function createCategoryService(db: Db) {
       .where(eq(categories.id, id))
       .limit(1)
     if (!rows[0]) throw new CategoryNotFound()
+
     return rows[0]
   }
 
   async function create(name: string) {
     const rows = await db.insert(categories).values({ name }).returning()
+
     return rows[0]
   }
 
@@ -30,6 +32,7 @@ export function createCategoryService(db: Db) {
       .where(eq(categories.id, id))
       .returning()
     if (!rows[0]) throw new CategoryNotFound()
+
     return rows[0]
   }
 

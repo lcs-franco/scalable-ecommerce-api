@@ -42,6 +42,7 @@ function parseCartHash(raw: Record<string, string>): ICartItem[] {
 export function createCartService(redis: RedisClient) {
   async function addItem(userId: string, productId: string, quantity: number) {
     const key = cartKey(userId)
+
     await redis
       .multi()
       .hset(key, productId, quantity)
@@ -77,6 +78,7 @@ export function createCartService(redis: RedisClient) {
 
   async function getItems(userId: string): Promise<ICartItem[]> {
     const raw = await redis.hgetall(cartKey(userId))
+
     return parseCartHash(raw)
   }
 
@@ -86,6 +88,7 @@ export function createCartService(redis: RedisClient) {
   ): { items: IEnrichedCartItem[]; total: number } {
     const enriched = items.map((item) => {
       const product = products.get(item.productId)
+
       return {
         productId: item.productId,
         name: product?.name ?? null,
@@ -96,6 +99,7 @@ export function createCartService(redis: RedisClient) {
       }
     })
     const total = enriched.reduce((sum, i) => sum + (i.lineTotal ?? 0), 0)
+
     return { items: enriched, total }
   }
 
@@ -106,6 +110,7 @@ export function createCartService(redis: RedisClient) {
   async function checkout(userId: string): Promise<ICartItem[]> {
     const key = cartKey(userId)
     const multi = redis.multi()
+
     multi.hgetall(key)
     multi.del(key)
     const results = await multi.exec()
@@ -114,6 +119,7 @@ export function createCartService(redis: RedisClient) {
 
     const [err, raw] = results[0] as [Error | null, Record<string, string>]
     if (err) throw err
+
     if (!raw || Object.keys(raw).length === 0) throw new CartEmpty()
 
     return parseCartHash(raw)

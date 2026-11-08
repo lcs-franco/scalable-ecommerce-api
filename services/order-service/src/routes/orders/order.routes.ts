@@ -44,6 +44,7 @@ export async function orderRoutes(fastify: FastifyInstance) {
         limit: request.query.limit,
         offset: request.query.offset,
       })
+
       return reply.send(result)
     },
   )
@@ -80,6 +81,7 @@ export async function orderRoutes(fastify: FastifyInstance) {
         request.body.status,
         request.id,
       )
+
       return reply.send(order)
     },
   )

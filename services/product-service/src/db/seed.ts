@@ -6,6 +6,7 @@ import { seedSampleData } from './sample-data.js'
 
 async function seed() {
   const { db, pool } = createDb(config.DATABASE_URL)
+
   await runMigrations(db)
 
   await seedSampleData(db)

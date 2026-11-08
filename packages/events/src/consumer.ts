@@ -64,8 +64,10 @@ export function createConsumer(
           })
 
         let validated: EventData<TopicName>
+
         try {
           const parsed = JSON.parse(message.value.toString())
+
           validated = EventSchemas[topic as TopicName].parse(parsed)
         } catch (err) {
           log.error(

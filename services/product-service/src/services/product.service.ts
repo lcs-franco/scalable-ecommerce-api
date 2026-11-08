@@ -22,8 +22,10 @@ export function createProductService(db: Db) {
     if (opts.categoryId) {
       conditions.push(eq(products.categoryId, opts.categoryId))
     }
+
     if (opts.q) {
       const pattern = `%${opts.q}%`
+
       conditions.push(
         or(ilike(products.name, pattern), ilike(products.description, pattern)),
       )
@@ -77,6 +79,7 @@ export function createProductService(db: Db) {
       .where(eq(products.id, id))
       .limit(1)
     if (!rows[0]) throw new ProductNotFound()
+
     return rows[0]
   }
 
@@ -88,6 +91,7 @@ export function createProductService(db: Db) {
     categoryId: string
   }) {
     const rows = await db.insert(products).values(data).returning()
+
     return rows[0]
   }
 
@@ -107,6 +111,7 @@ export function createProductService(db: Db) {
       .where(eq(products.id, id))
       .returning()
     if (!rows[0]) throw new ProductNotFound()
+
     return rows[0]
   }
 

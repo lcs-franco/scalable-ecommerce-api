@@ -26,6 +26,7 @@ export async function categoryRoutes(fastify: FastifyInstance, deps: IDeps) {
     { config: { skipAuth: true } },
     async (_request, reply) => {
       const items = await categoryService.findAll()
+
       return reply.send(items)
     },
   )
@@ -36,6 +37,7 @@ export async function categoryRoutes(fastify: FastifyInstance, deps: IDeps) {
     async (request, reply) => {
       requireAdmin(request.user.role)
       const category = await categoryService.create(request.body.name)
+
       return reply.status(201).send(category)
     },
   )
@@ -54,6 +56,7 @@ export async function categoryRoutes(fastify: FastifyInstance, deps: IDeps) {
         request.params.id,
         request.body.name,
       )
+
       return reply.send(category)
     },
   )
@@ -64,6 +67,7 @@ export async function categoryRoutes(fastify: FastifyInstance, deps: IDeps) {
     async (request, reply) => {
       requireAdmin(request.user.role)
       await categoryService.remove(request.params.id)
+
       return reply.status(204).send()
     },
   )

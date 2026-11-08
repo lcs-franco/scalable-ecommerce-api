@@ -30,6 +30,7 @@ export function mockProductClient() {
     orderId: string
     items: { productId: string; quantity: number }[]
   }[] = []
+
   return {
     restoreOrderStockCalls,
     validateOrder: async (
@@ -66,12 +67,14 @@ export async function createTestApp(overrides?: {
     productClient: overrides?.productClient ?? mockProductClient(),
     createSaga: saga,
   })
+
   await app.ready()
 
   return { app, db, pool }
 }
 
 const ADMIN_ID = '00000000-0000-0000-0000-000000000001'
+
 export const DEFAULT_USER_ID = '00000000-0000-0000-0000-000000000002'
 export const DEFAULT_USER_EMAIL = 'user@test.com'
 

@@ -15,12 +15,14 @@ export function createUserService(db: Db) {
       .from(users)
       .where(eq(users.email, email))
       .limit(1)
+
     return rows[0] ?? null
   }
 
   async function findById(id: string) {
     const rows = await db.select().from(users).where(eq(users.id, id)).limit(1)
     if (!rows[0]) throw new UserNotFound()
+
     return rows[0]
   }
 
@@ -53,6 +55,7 @@ export function createUserService(db: Db) {
   ) {
     const updates: Record<string, unknown> = {}
     if (data.name) updates.name = data.name
+
     if (data.password)
       updates.passwordHash = await bcrypt.hash(data.password, BCRYPT_ROUNDS)
 
@@ -62,6 +65,7 @@ export function createUserService(db: Db) {
       .where(eq(users.id, userId))
       .returning()
     if (!rows[0]) throw new UserNotFound()
+
     return rows[0]
   }
 

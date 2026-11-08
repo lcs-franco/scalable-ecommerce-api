@@ -39,6 +39,7 @@ describe('payment routes', () => {
         providerPaymentId: 'pi_seed',
       })
       .returning()
+
     return row
   }
 
@@ -58,6 +59,7 @@ describe('payment routes', () => {
 
       expect(res.statusCode).toBe(200)
       const body = res.json()
+
       expect(body.id).toBe(payment.id)
       expect(body.status).toBe('confirmed')
       expect(body.amount).toBe(3000)

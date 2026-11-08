@@ -18,6 +18,7 @@ describe.skipIf(!key)('stripe processor (contract, test mode)', () => {
 
   function input(paymentMethod: string) {
     const orderId = randomUUID()
+
     return {
       amount: 1234,
       currency: 'usd',
@@ -40,6 +41,7 @@ describe.skipIf(!key)('stripe processor (contract, test mode)', () => {
     )
 
     expect(result.success).toBe(false)
+
     if (!result.success) {
       expect(result.reason).toMatch(/declined/i)
       expect(result.providerPaymentId).toMatch(/^pi_/)

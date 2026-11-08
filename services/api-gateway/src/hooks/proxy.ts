@@ -17,13 +17,16 @@ function forwardedHeaders(
   request: FastifyRequest,
 ): IncomingHttpHeaders {
   const result = { ...headers }
+
   for (const name of CLIENT_FORBIDDEN_HEADERS) delete result[name]
 
   result[REQUEST_ID_HEADER] = request.id
+
   if (request.identity) {
     result['x-user-id'] = request.identity.userId
     result['x-user-role'] = request.identity.role
   }
+
   return result
 }
 

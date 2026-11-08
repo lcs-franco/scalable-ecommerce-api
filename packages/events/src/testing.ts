@@ -30,6 +30,7 @@ const FAST_FETCH = { maxWaitTimeInMs: 100 }
 async function pinGroupToEnd(kafka: Kafka, groupId: string) {
   const topics = Object.values(Topics)
   const admin = kafka.admin()
+
   await admin.connect()
   const ends = await Promise.all(
     topics.map(async (topic) => ({
@@ -37,9 +38,11 @@ async function pinGroupToEnd(kafka: Kafka, groupId: string) {
       partitions: await admin.fetchTopicOffsets(topic),
     })),
   )
+
   await admin.disconnect()
 
   const consumer = kafka.consumer({ groupId, ...FAST_FETCH })
+
   await consumer.connect()
   await consumer.subscribe({ topics })
   const fetched = new Promise((resolve) =>
@@ -50,6 +53,7 @@ async function pinGroupToEnd(kafka: Kafka, groupId: string) {
     eachBatchAutoResolve: false,
     eachBatch: async () => {},
   })
+
   consumer.pause(topics.map((topic) => ({ topic })))
   for (const { topic, partitions } of ends) {
     for (const { partition, high } of partitions) {
@@ -65,8 +69,10 @@ export async function createTestConsumer(
   log: Pick<IKafkaLogTarget, 'error'> = silentLog,
 ) {
   const groupId = `test-${randomUUID()}`
+
   await pinGroupToEnd(kafka, groupId)
   const consumer = createConsumer(kafka, groupId, log, FAST_FETCH)
+
   await consumer.connect()
 
   return consumer
@@ -79,9 +85,11 @@ export async function collectEvents<Topic extends TopicName>(
 ) {
   const consumer = await createTestConsumer(kafka)
   const events: EventData<Topic>[] = []
+
   await consumer.subscribe(topic, async (data) => {
     events.push(data)
   })
   await consumer.start()
+
   return { events, stop: () => consumer.disconnect() }
 }
