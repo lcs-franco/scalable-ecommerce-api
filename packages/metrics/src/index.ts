@@ -1,5 +1,9 @@
 import fp from 'fastify-plugin'
-import { createServer } from 'node:http'
+import {
+  createServer,
+  type IncomingMessage,
+  type ServerResponse,
+} from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { collectDefaultMetrics, Gauge, Histogram, register } from 'prom-client'
 
@@ -135,6 +139,23 @@ export function upstreamMetrics() {
 
 let defaultMetricsStarted = false
 
+async function serveMetrics(req: IncomingMessage, res: ServerResponse) {
+  if (req.method !== 'GET' || req.url !== '/metrics') {
+    res.writeHead(404).end()
+
+    return
+  }
+
+  try {
+    const body = await register.metrics()
+
+    res.writeHead(200, { 'content-type': register.contentType }).end(body)
+  } catch {
+    // An unhandled rejection here would kill the service being observed
+    res.writeHead(500).end()
+  }
+}
+
 export interface IMetricsServerOptions {
   port: number
   service: string
@@ -151,22 +172,7 @@ export async function startMetricsServer({
     defaultMetricsStarted = true
   }
 
-  const server = createServer(async (req, res) => {
-    if (req.method !== 'GET' || req.url !== '/metrics') {
-      res.writeHead(404).end()
-
-      return
-    }
-
-    try {
-      const body = await register.metrics()
-
-      res.writeHead(200, { 'content-type': register.contentType }).end(body)
-    } catch {
-      // An unhandled rejection here would kill the service being observed
-      res.writeHead(500).end()
-    }
-  })
+  const server = createServer((req, res) => void serveMetrics(req, res))
 
   await new Promise<void>((resolve) => server.listen(port, '0.0.0.0', resolve))
 
