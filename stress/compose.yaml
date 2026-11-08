@@ -1,12 +1,12 @@
 name: ecommerce-stress
 
-# Port shifts (ports.env) let this run alongside `pnpm dev`; secrets come from the root .env
+# Port shifts and rate limits (stress.env) let this run alongside `pnpm dev`; secrets come from the root .env
 include:
   - path: [../docker/infra.yaml, infra.override.yaml]
-    env_file: [../.env, ports.env]
+    env_file: [../.env, stress.env]
   - path: ../docker/services.yaml
-    env_file: [../.env, ports.env]
+    env_file: [../.env, stress.env]
   - path: seed.yaml
-    env_file: [../.env, ports.env]
+    env_file: [../.env, stress.env]
   - path: ../docker/observability.yaml
-    env_file: [../.env, ports.env]
+    env_file: [../.env, stress.env]
