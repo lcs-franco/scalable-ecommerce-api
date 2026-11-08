@@ -2,7 +2,7 @@
 
 A separate compose project (`ecommerce-stress`) with a deliberately absurd dataset, so the stress campaign sees what breaks under real data volume. Decisions live in issue #72.
 
-It runs alongside `pnpm dev`: own volumes, host ports shifted by `ports.env` (gateway 4000, Postgres 6432, Redis 7380, Kafka 10092, Mailpit 2025/9025, Grafana 4100, Prometheus 10090). Secrets come from the root `.env`.
+It runs alongside `pnpm dev`: own volumes, host ports shifted by `stress.env` (gateway 4000, Postgres 6432, Redis 7380, Kafka 10092, Mailpit 2025/9025, Grafana 4100, Prometheus 10090). Secrets come from the root `.env`.
 
 ## Usage
 
@@ -32,7 +32,72 @@ docker compose -f stress/compose.yaml --profile observability down
 
 `up --wait` reports failure because `cart-seed` exits on its own; wait on the seed container instead. The seed runs on every `up` but each database script skips itself once its marker row exists. Snapshot volumes (`ecommerce-stress_postgres-snapshot-<name>`, ~37 GB each at full scale) are not part of the compose file, so `down -v` keeps them; remove them with `docker volume rm`. A restore resets Postgres only: re-seed the carts with `docker compose -f stress/compose.yaml up cart-seed`.
 
-## Knobs
+## Attacks (k6 harness)
+
+Every traffic-based attack runs a scenario from `scenarios/` through `scripts/attack.sh`. Decisions live in issue #73.
+
+```bash
+# The stress world must be up (see Usage); SEED_* must match the seed, as for check.sh
+SEED_SCALE=1 stress/scripts/attack.sh smoke
+
+# Extra arguments go to `k6 run`
+SEED_SCALE=1 stress/scripts/attack.sh smoke --quiet --no-color
+
+# Only the invariants, for a run started at <timestamp> with the hot product at <stock>
+stress/scripts/verify.sh --since '<timestamp>' --hot-initial <stock>
+```
+
+`attack.sh` records the run start (Postgres clock) and the hot product's stock, runs k6 from its official image (service `k6`, profile `k6`, no resource limits), then `verify.sh`. It exits non-zero if k6 failed (a threshold crossed: errors or latency) or an invariant does not hold, so either verdict means the platform broke. k6 pushes its metrics to Prometheus (remote write, k6 row in the Grafana dashboard) only when the `prometheus` container is running.
+
+`verify.sh` polls until the run settles (no pending run order, no unpublished outbox event, no `stock_restorations` row) or `VERIFY_TIMEOUT` passes, then `checks/after-run.sql` asserts, over orders created since the run start:
+
+- no product has negative stock;
+- hot product: initial stock − quantity sold in non-cancelled run orders = final stock;
+- every run order is `paid` or `cancelled`;
+- no unpublished event in the user, order or payment outbox, and `stock_restorations` is empty.
+
+At full scale `verify.sh` takes ~10 s (it scans `products`, `orders` and `order_items`, which have no index for it).
+
+### Scenarios
+
+A scenario is a file in `scenarios/` that declares its executors (always open model: `constant-arrival-rate` or `ramping-arrival-rate`, so overload shows up as latency and errors), its thresholds and `handleSummary`. It sends every request through `lib/http.ts`, which tags `name` with the route template (`/api/products/:id`).
+
+| Scenario | Traffic                                                                                       |
+| -------- | --------------------------------------------------------------------------------------------- |
+| `smoke`  | 1 iteration/s for 1 min: list products, open one, add it to the cart, check out (Stripe test) |
+
+`lib/`:
+
+- `auth.ts`: `loginUsers()` logs in `K6_USERS` users from user 111 in `setup()` (whales 0–9 and seeded carts 10–110 stay out); `vuSession()` gives each VU its own user, so a scenario's `maxVUs` must not exceed `K6_USERS`. Tokens last 15 minutes and are not refreshed.
+- `world.ts`: world size from `SEED_*`, ids as in `seed/common.sql`, `pickProduct()` with the seed's popularity, the hot product excluded unless `{ includeHot: true }`.
+- `thresholds.ts`: per-route p95/p99 plus error-rate thresholds and the defaults.
+- `summary.ts`: prints the summary and writes `results/<scenario>-<timestamp>.json` (gitignored).
+
+### Knobs
+
+| Env                                           | Default   | Effect                                                                  |
+| --------------------------------------------- | --------- | ----------------------------------------------------------------------- |
+| `SEED_SCALE` / `SEED_PRODUCTS` / `SEED_USERS` | as seeded | World size k6 derives ids from                                          |
+| `K6_USERS`                                    | `200`     | Users logged in by `setup()`                                            |
+| `VERIFY_TIMEOUT`                              | `60`      | Seconds `verify.sh` waits for the run to settle                         |
+| `RATE_LIMIT_ANONYMOUS` / `_AUTHENTICATED`     | `1000000` | Gateway limits per minute (`stress.env`); the limiter stays in the path |
+
+### When to restore
+
+An attack leaves its orders, payments and stock changes behind, and the invariants only look at the run's own orders, so runs can follow each other. Restore (`scripts/restore.sh`, then `up cart-seed`) before an attack whose hypothesis depends on the seeded state: the hot product's stock (or reset only it with `seed/reset-hot.sql`), a user's order count, or popular products running out of stock after many runs. `scripts/check.sh` checks the seed, so it fails after any attack until a restore.
+
+### Smoke world
+
+`SEED_SCALE=0.001` in its own compose project seeds in about a minute and keeps the full-scale volumes untouched (stop the full world first, the host ports are the same):
+
+```bash
+export COMPOSE_PROJECT_NAME=ecommerce-stress-smoke SEED_SCALE=0.001
+docker compose -f stress/compose.yaml up -d && docker wait ecommerce-stress-smoke-stress-seed-1
+stress/scripts/attack.sh smoke
+docker compose -f stress/compose.yaml down -v
+```
+
+## Seed knobs
 
 | Env                                            | Default    | Effect                                   |
 | ---------------------------------------------- | ---------- | ---------------------------------------- |
