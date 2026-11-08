@@ -1,4 +1,4 @@
-export type ProviderName = 'stripe'
+export type ProviderName = 'stripe' | 'fake'
 
 export type Cents = number
 

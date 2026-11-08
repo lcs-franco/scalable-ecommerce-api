@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { payments } from '../db/schema.js'
+import { createFakeProcessor } from '../payments/fake.processor.js'
 import {
   cleanDb,
   createTestApp,
@@ -182,5 +183,56 @@ describe('paymentService.processOrderPlaced', () => {
     expect(row.status).toBe('confirmed')
     expect(ctx.stub.calls).toHaveLength(1)
     expect(await outboxEvents(ctx.db)).toHaveLength(1)
+  })
+})
+
+describe('paymentService.processOrderPlaced with the fake processor', () => {
+  let ctx: Awaited<ReturnType<typeof createTestApp>>
+
+  beforeAll(async () => {
+    ctx = await createTestApp({
+      processor: createFakeProcessor({ failureRate: 1 }),
+    })
+  })
+
+  afterEach(async () => {
+    await cleanDb(ctx.db)
+  })
+
+  afterAll(async () => {
+    await ctx.app.close()
+    await ctx.pool.end()
+  })
+
+  it('fails the payment as provider fake and enqueues payment.failed at failure rate 1', async () => {
+    const event = orderPlacedEvent()
+
+    await ctx.app.paymentService.processOrderPlaced(event)
+
+    const [row] = await ctx.db
+      .select()
+      .from(payments)
+      .where(eq(payments.orderId, event.orderId))
+
+    expect(row).toMatchObject({
+      status: 'failed',
+      provider: 'fake',
+      providerPaymentId: `fake_${event.orderId}`,
+      failureReason: 'fake decline',
+    })
+
+    expect(await outboxEvents(ctx.db, 'payment.failed')).toEqual([
+      {
+        topic: 'payment.failed',
+        key: row.id,
+        data: {
+          orderId: event.orderId,
+          paymentId: row.id,
+          userId: event.userId,
+          email: event.email,
+          reason: 'fake decline',
+        },
+      },
+    ])
   })
 })
