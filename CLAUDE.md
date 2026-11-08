@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+Code follows `CODING_STANDARDS.md` (judgement rules; mechanical ones are lint). Code review reads it too.
+
 ## Build & Development Commands
 
 ```bash
