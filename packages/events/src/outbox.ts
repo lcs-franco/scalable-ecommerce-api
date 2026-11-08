@@ -76,7 +76,7 @@ function createLoop(
     await running
     running = undefined
 
-    if (!stopped) timer = setTimeout(tick, intervalMs)
+    if (!stopped) timer = setTimeout(() => void tick(), intervalMs)
   }
 
   function start() {
@@ -84,7 +84,7 @@ function createLoop(
 
     stopped = false
 
-    if (!running) timer = setTimeout(tick, intervalMs)
+    if (!running) timer = setTimeout(() => void tick(), intervalMs)
   }
 
   async function stop() {
