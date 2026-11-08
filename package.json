@@ -13,7 +13,7 @@
     "infra": "docker compose -f docker/infra.yaml up -d --wait postgres redis kafka mailpit && docker compose -f docker/infra.yaml run --rm kafka-init",
     "infra:down": "docker compose -f docker/infra.yaml down",
     "build": "pnpm -r run build",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p stress",
     "lint": "eslint . --fix && prettier . --write",
     "lint:check": "eslint . && prettier --check .",
     "test": "pnpm -r --workspace-concurrency=1 run test",
@@ -36,10 +36,15 @@
     "typescript-eslint": "^8.70.0"
   },
   "lint-staged": {
-    "*.{ts,mts,cts,tsx}": [
+    "{packages,services}/**/*.{ts,mts,cts,tsx}": [
       "eslint --fix",
       "prettier --write",
       "tsc-files --noEmit"
+    ],
+    "stress/**/*.ts": [
+      "eslint --fix",
+      "prettier --write",
+      "sh -c 'tsc --noEmit -p stress'"
     ],
     "*.{js,mjs,cjs}": [
       "eslint --fix",

@@ -1,0 +1,16 @@
+# No cpus/mem_limit: the load generator must never be the bottleneck
+services:
+  k6:
+    profiles: [k6]
+    image: grafana/k6:2.3.0
+    working_dir: /stress
+    volumes:
+      - ./:/stress
+    environment:
+      BASE_URL: http://api-gateway:3000
+      K6_USERS: ${K6_USERS:-200}
+      SEED_SCALE: ${SEED_SCALE:-1}
+      SEED_PRODUCTS: ${SEED_PRODUCTS:-}
+      SEED_USERS: ${SEED_USERS:-}
+      K6_PROMETHEUS_RW_SERVER_URL: http://prometheus:9090/api/v1/write
+      K6_PROMETHEUS_RW_TREND_STATS: p(95),p(99)

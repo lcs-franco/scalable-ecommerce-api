@@ -1,6 +1,7 @@
 packages:
   - 'services/*'
   - 'packages/*'
+  - stress
 allowBuilds:
   bcrypt: true
   esbuild: true

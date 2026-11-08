@@ -10,3 +10,5 @@ include:
     env_file: [../.env, stress.env]
   - path: ../docker/observability.yaml
     env_file: [../.env, stress.env]
+  - path: k6.yaml
+    env_file: [../.env, stress.env]
