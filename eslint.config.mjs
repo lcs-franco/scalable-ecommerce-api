@@ -4,7 +4,7 @@ import globals from 'globals'
 import tseslint from 'typescript-eslint'
 
 export default [
-  { ignores: ['**/dist/'] },
+  { ignores: ['**/dist/', '.claude/'] },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   prettierConfig,

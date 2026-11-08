@@ -32,6 +32,9 @@ pnpm typecheck
 # Lint
 pnpm lint
 
+# Lint without writing (what CI runs)
+pnpm lint:check
+
 # Run all tests
 pnpm test
 
@@ -110,7 +113,7 @@ Single Postgres container hosts 4 logical databases (`init-databases.sh` creates
 - **Location:** `services/*/src/__tests__/*.test.ts`
 - **Pattern:** `createTestApp()` helper builds Fastify instance with real Postgres/Redis and a `silent` logger. Events are asserted as rows in the service's `outbox` table (`outboxEvents()`). `cleanDb()` resets tables (including `outbox`) between tests.
 - **Kafka tests:** `kafka.test.ts` (and notification's `consumers.test.ts`) run the outbox relay / `setupConsumers` against the real broker with `@ecommerce/events/testing` (`createTestConsumer`, `collectEvents`). Topics are shared, so filter received events by an id the test owns. Run them against `pnpm infra`, not `pnpm dev`: the running services' consumer groups would also consume test messages.
-- **CI:** GitHub Actions runs typecheck → build → test. The test job starts `docker/infra.yaml` while dependencies install, then `pnpm infra` waits for health and creates the topics.
+- **CI:** GitHub Actions runs lint, typecheck and build in parallel, then test (after typecheck and build). The test job starts `docker/infra.yaml` while dependencies install, then `pnpm infra` waits for health and creates the topics.
 
 ## Environment Setup
 
@@ -122,4 +125,4 @@ Issues are tracked in GitHub Issues (`gh issue list`, `gh issue view <n>`). MVP 
 
 ## CI
 
-GitHub Actions on PRs to main: typecheck, build, test. Single workflow per PR (previous runs cancelled). Node 22, pnpm 11.
+GitHub Actions on PRs to main: lint, typecheck and build in parallel, then test. Single workflow per PR (previous runs cancelled). Node 22, pnpm 11.
