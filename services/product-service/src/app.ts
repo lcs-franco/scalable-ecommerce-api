@@ -1,18 +1,7 @@
-import { authPlugin } from '@ecommerce/auth'
-import { DOCS_PREFIX, docsPlugin } from '@ecommerce/docs'
-import {
-  genRequestId,
-  registerErrorHandler,
-  registerRequestId,
-} from '@ecommerce/http'
-import { metricsPlugin } from '@ecommerce/metrics'
-import Fastify, { type FastifyBaseLogger } from 'fastify'
-import {
-  serializerCompiler,
-  validatorCompiler,
-} from 'fastify-type-provider-zod'
-import type { Db } from './db/index.js'
-import { runMigrations } from './db/migrate.js'
+import { runMigrations } from '@ecommerce/db'
+import { createServiceApp } from '@ecommerce/service'
+import type { FastifyBaseLogger } from 'fastify'
+import { MIGRATIONS_FOLDER, type Db } from './db/index.js'
 import { categoryRoutes } from './routes/categories/category.routes.js'
 import { productRoutes } from './routes/products/product.routes.js'
 import { createCategoryService } from './services/category.service.js'
@@ -25,31 +14,13 @@ interface IBuildAppOptions {
 }
 
 export async function buildApp(opts: IBuildAppOptions) {
-  const app = Fastify({
-    loggerInstance: opts.logger,
-    genReqId: genRequestId,
-  })
+  await runMigrations(opts.db, MIGRATIONS_FOLDER)
 
-  app.setValidatorCompiler(validatorCompiler)
-  app.setSerializerCompiler(serializerCompiler)
-
-  await runMigrations(opts.db)
-
-  registerErrorHandler(app)
-  registerRequestId(app)
-  await app.register(metricsPlugin)
-
-  await app.register(docsPlugin, { title: 'product-service' })
-  await app.register(authPlugin, {
-    publicPrefixes: [DOCS_PREFIX],
+  const app = await createServiceApp({
+    name: 'product-service',
+    logger: opts.logger,
     internalToken: opts.internalServiceToken,
   })
-
-  app.get(
-    '/health',
-    { config: { skipAuth: true }, schema: { hide: true } },
-    async () => ({ status: 'ok' }),
-  )
 
   const categoryService = createCategoryService(opts.db)
   const productService = createProductService(opts.db)

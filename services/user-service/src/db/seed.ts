@@ -1,8 +1,9 @@
+import { createDb, runMigrations } from '@ecommerce/db'
 import bcrypt from 'bcrypt'
 import { eq } from 'drizzle-orm'
 import { config } from '../config.js'
-import { createDb } from './index.js'
-import { runMigrations } from './migrate.js'
+import { MIGRATIONS_FOLDER } from './index.js'
+import * as schema from './schema.js'
 import { users } from './schema.js'
 
 const ADMIN_EMAIL = 'admin@example.com'
@@ -14,9 +15,9 @@ async function seed() {
     throw new Error('ADMIN_PASSWORD env var is required for seeding')
   }
 
-  const { db, pool } = createDb(config.DATABASE_URL)
+  const { db, pool } = createDb({ url: config.DATABASE_URL, schema })
 
-  await runMigrations(db)
+  await runMigrations(db, MIGRATIONS_FOLDER)
 
   const existing = await db
     .select()

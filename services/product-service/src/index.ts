@@ -1,52 +1,22 @@
-/* eslint-disable no-console */
-import { createLogger } from '@ecommerce/logger'
-import { observePgPool, startMetricsServer } from '@ecommerce/metrics'
+import { createDb } from '@ecommerce/db'
+import { observePgPool } from '@ecommerce/metrics'
+import { runService } from '@ecommerce/service'
 import { buildApp } from './app.js'
 import { config } from './config.js'
-import { createDb } from './db/index.js'
+import * as schema from './db/schema.js'
 
-async function main() {
-  const log = createLogger({
-    service: 'product-service',
-    level: config.LOG_LEVEL,
-  })
+await runService(
+  { name: 'product-service', config },
+  async ({ log, onClose }) => {
+    const { db, pool } = createDb({ url: config.DATABASE_URL, schema })
 
-  const { db, pool } = createDb(config.DATABASE_URL)
+    onClose('postgres', () => pool.end())
+    observePgPool(pool)
 
-  observePgPool(pool)
-
-  const app = await buildApp({
-    logger: log,
-    db,
-    internalServiceToken: config.INTERNAL_SERVICE_TOKEN,
-  })
-
-  const metrics = await startMetricsServer({
-    port: config.METRICS_PORT,
-    service: 'product-service',
-  })
-
-  const shutdown = async () => {
-    await app.close()
-    await metrics.close()
-    await pool.end()
-  }
-
-  const onSignal = () => {
-    shutdown().catch((err) => {
-      log.error({ err }, 'shutdown failed')
-      process.exit(1)
+    return buildApp({
+      logger: log,
+      db,
+      internalServiceToken: config.INTERNAL_SERVICE_TOKEN,
     })
-  }
-
-  process.on('SIGTERM', onSignal)
-  process.on('SIGINT', onSignal)
-
-  await app.listen({ port: config.PORT, host: '0.0.0.0' })
-  console.log('App running on port:', config.PORT)
-}
-
-main().catch((err) => {
-  console.error('failed to start product-service', err)
-  process.exit(1)
-})
+  },
+)

@@ -1,22 +1,17 @@
-/* eslint-disable no-console */
-import {
-  createConsumer,
-  createKafkaLogCreator,
-  createProducer,
-} from '@ecommerce/events'
+import { createDb } from '@ecommerce/db'
+import { createConsumer, createKafka, createProducer } from '@ecommerce/events'
 import { createOutboxRelay, outboxBacklog } from '@ecommerce/events/outbox'
-import { createLogger, type Logger } from '@ecommerce/logger'
+import type { Logger } from '@ecommerce/logger'
 import {
   consumerMetrics,
   observeOutbox,
   observePgPool,
-  startMetricsServer,
 } from '@ecommerce/metrics'
-import { Kafka, logLevel } from 'kafkajs'
+import { runService } from '@ecommerce/service'
 import Stripe from 'stripe'
 import { buildApp } from './app.js'
 import { config } from './config/env.js'
-import { createDb } from './db/index.js'
+import * as schema from './db/schema.js'
 import { setupConsumers } from './kafka/consumers.js'
 import { createFakeProcessor } from './payments/fake.processor.js'
 import type { IPaymentProcessor } from './payments/payment-processor.js'
@@ -43,76 +38,40 @@ function createProcessor(log: Logger): IPaymentProcessor {
   return createFakeProcessor(knobs)
 }
 
-async function main() {
-  const log = createLogger({
-    service: 'payment-service',
-    level: config.LOG_LEVEL,
-  })
+const name = 'payment-service'
 
-  const { db, pool } = createDb(config.DATABASE_URL)
+await runService({ name, config }, async ({ log, onClose, afterListen }) => {
+  const { db, pool } = createDb({ url: config.DATABASE_URL, schema })
 
+  onClose('postgres', () => pool.end())
   observePgPool(pool)
   observeOutbox(() => outboxBacklog(db))
 
-  const kafka = new Kafka({
-    clientId: 'payment-service',
-    brokers: [config.KAFKA_BROKER],
-    logCreator: createKafkaLogCreator(log),
-    logLevel: logLevel.DEBUG,
-  })
-
+  const kafka = createKafka({ service: name, broker: config.KAFKA_BROKER, log })
   const producer = createProducer(kafka)
 
+  onClose('kafka producer', () => producer.disconnect())
   await producer.connect()
 
-  const consumer = createConsumer(kafka, 'payment-service', log, {
+  const consumer = createConsumer(kafka, name, log, {
     onProcessed: consumerMetrics(),
   })
 
+  onClose('kafka consumer', () => consumer.disconnect())
   await consumer.connect()
 
-  const processor = createProcessor(log)
-
-  const app = await buildApp({ db, logger: log, processor })
+  const app = await buildApp({
+    db,
+    logger: log,
+    processor: createProcessor(log),
+  })
 
   const relay = createOutboxRelay({ db, producer, log })
 
-  await setupConsumers({
-    consumer,
-    paymentService: app.paymentService,
-    log,
-  })
+  afterListen(() => relay.start())
+  onClose('outbox relay', () => relay.stop())
 
-  const metrics = await startMetricsServer({
-    port: config.METRICS_PORT,
-    service: 'payment-service',
-  })
+  await setupConsumers({ consumer, paymentService: app.paymentService, log })
 
-  const shutdown = async () => {
-    await app.close()
-    await metrics.close()
-    await relay.stop()
-    await consumer.disconnect()
-    await producer.disconnect()
-    await pool.end()
-  }
-
-  const onSignal = () => {
-    shutdown().catch((err) => {
-      log.error({ err }, 'shutdown failed')
-      process.exit(1)
-    })
-  }
-
-  process.on('SIGTERM', onSignal)
-  process.on('SIGINT', onSignal)
-
-  await app.listen({ port: config.PORT, host: '0.0.0.0' })
-  relay.start()
-  console.log('App running on port:', config.PORT)
-}
-
-main().catch((err) => {
-  console.error('failed to start payment-service', err)
-  process.exit(1)
+  return app
 })

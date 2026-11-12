@@ -1,3 +1,4 @@
+import { createDb } from '@ecommerce/db'
 import { Topics } from '@ecommerce/events'
 import {
   createOutboxRelay,
@@ -7,13 +8,13 @@ import {
   type OutboxProducer,
 } from '@ecommerce/events/outbox'
 import { afterAll, afterEach, describe, expect, it } from 'vitest'
-import { createDb } from '../db/index.js'
 import {
   cleanDb,
   DEFAULT_USER_EMAIL,
   DEFAULT_USER_ID,
   TEST_DATABASE_URL,
 } from './helpers.js'
+import * as schema from '../db/schema.js'
 
 type Published = {
   topic: string
@@ -47,7 +48,7 @@ const silentLog = { info: () => {}, error: () => {} }
 const DAY_MS = 24 * 60 * 60 * 1000
 
 describe('outbox relay', () => {
-  const { db, pool } = createDb(TEST_DATABASE_URL)
+  const { db, pool } = createDb({ url: TEST_DATABASE_URL, schema })
 
   afterEach(async () => {
     await cleanDb(db)

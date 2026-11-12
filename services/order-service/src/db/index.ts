@@ -1,12 +1,9 @@
-import { drizzle } from 'drizzle-orm/node-postgres'
-import pg from 'pg'
-import * as schema from './schema.js'
+import type { Database } from '@ecommerce/db'
+import { fileURLToPath } from 'node:url'
+import type * as schema from './schema.js'
 
-export function createDb(connectionString: string) {
-  const pool = new pg.Pool({ connectionString })
-  const db = drizzle(pool, { schema })
+export type Db = Database<typeof schema>
 
-  return { db, pool }
-}
-
-export type Db = ReturnType<typeof createDb>['db']
+export const MIGRATIONS_FOLDER = fileURLToPath(
+  new URL('../../drizzle', import.meta.url),
+)

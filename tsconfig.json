@@ -4,13 +4,15 @@
     "noEmit": true,
     "paths": {
       "@ecommerce/auth": ["./packages/auth/src/index.ts"],
+      "@ecommerce/db": ["./packages/db/src/index.ts"],
       "@ecommerce/docs": ["./packages/docs/src/index.ts"],
       "@ecommerce/events": ["./packages/events/src/index.ts"],
       "@ecommerce/events/testing": ["./packages/events/src/testing.ts"],
       "@ecommerce/events/outbox": ["./packages/events/src/outbox.ts"],
       "@ecommerce/http": ["./packages/http/src/index.ts"],
       "@ecommerce/logger": ["./packages/logger/src/index.ts"],
-      "@ecommerce/metrics": ["./packages/metrics/src/index.ts"]
+      "@ecommerce/metrics": ["./packages/metrics/src/index.ts"],
+      "@ecommerce/service": ["./packages/service/src/index.ts"]
     }
   },
   "include": ["packages/*/src", "services/*/src"]

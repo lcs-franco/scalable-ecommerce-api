@@ -1,13 +1,14 @@
 /* eslint-disable no-console */
+import { createDb, runMigrations } from '@ecommerce/db'
 import { config } from '../config.js'
-import { createDb } from './index.js'
-import { runMigrations } from './migrate.js'
+import { MIGRATIONS_FOLDER } from './index.js'
+import * as schema from './schema.js'
 import { seedSampleData } from './sample-data.js'
 
 async function seed() {
-  const { db, pool } = createDb(config.DATABASE_URL)
+  const { db, pool } = createDb({ url: config.DATABASE_URL, schema })
 
-  await runMigrations(db)
+  await runMigrations(db, MIGRATIONS_FOLDER)
 
   await seedSampleData(db)
   console.log('seed data inserted')
