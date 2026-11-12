@@ -15,9 +15,10 @@ const INPUT = {
 
 describe('createStripeProcessor', () => {
   const create = vi.fn()
+  const cancel = vi.fn()
   const log = { error: vi.fn(), warn: vi.fn() }
   const processor = createStripeProcessor({
-    stripe: { paymentIntents: { create } } as unknown as Pick<
+    stripe: { paymentIntents: { create, cancel } } as unknown as Pick<
       Stripe,
       'paymentIntents'
     >,
@@ -26,6 +27,7 @@ describe('createStripeProcessor', () => {
 
   beforeEach(() => {
     create.mockReset()
+    cancel.mockReset()
     log.error.mockReset()
     log.warn.mockReset()
   })
@@ -61,14 +63,48 @@ describe('createStripeProcessor', () => {
     })
   })
 
-  it('maps any other intent status to failure with the intent id', async () => {
+  it('cancels an intent that requires authentication and maps it to failure', async () => {
     create.mockResolvedValue({ id: 'pi_3ds', status: 'requires_action' })
+    cancel.mockResolvedValue({ id: 'pi_3ds', status: 'canceled' })
 
     await expect(processor.processPayment(INPUT)).resolves.toEqual({
       success: false,
-      reason: 'unexpected status: requires_action',
+      reason: 'authentication required',
       providerPaymentId: 'pi_3ds',
     })
+    expect(cancel).toHaveBeenCalledWith('pi_3ds')
+  })
+
+  it('still maps a 3DS intent to failure and warns when cancelling it fails', async () => {
+    const err = new Stripe.errors.StripeConnectionError({
+      type: 'api_error',
+      message: 'socket hang up',
+    })
+
+    create.mockResolvedValue({ id: 'pi_3ds', status: 'requires_action' })
+    cancel.mockRejectedValue(err)
+
+    await expect(processor.processPayment(INPUT)).resolves.toEqual({
+      success: false,
+      reason: 'authentication required',
+      providerPaymentId: 'pi_3ds',
+    })
+    expect(log.warn).toHaveBeenCalledWith(
+      { err, paymentIntentId: 'pi_3ds' },
+      expect.any(String),
+    )
+    expect(log.error).not.toHaveBeenCalled()
+  })
+
+  it('maps any other intent status to failure with the intent id', async () => {
+    create.mockResolvedValue({ id: 'pi_wait', status: 'processing' })
+
+    await expect(processor.processPayment(INPUT)).resolves.toEqual({
+      success: false,
+      reason: 'unexpected status: processing',
+      providerPaymentId: 'pi_wait',
+    })
+    expect(cancel).not.toHaveBeenCalled()
   })
 
   it('maps a StripeCardError to failure with its message and intent id', async () => {

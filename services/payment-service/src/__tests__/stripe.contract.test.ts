@@ -48,6 +48,23 @@ describe.skipIf(!key)('stripe processor (contract, test mode)', () => {
     }
   })
 
+  it('cancels the intent of a card that requires 3DS and maps it to failure', async () => {
+    const result = await createProcessor().processPayment(
+      input('pm_card_authenticationRequired'),
+    )
+
+    expect(result).toMatchObject({
+      success: false,
+      reason: 'authentication required',
+    })
+
+    const intent = await new Stripe(key!).paymentIntents.retrieve(
+      result.providerPaymentId!,
+    )
+
+    expect(intent.status).toBe('canceled')
+  })
+
   it('maps an unknown payment method to invalid payment method', async () => {
     const result = await createProcessor().processPayment(
       input('pm_does_not_exist'),
