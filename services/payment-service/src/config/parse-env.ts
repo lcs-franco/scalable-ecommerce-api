@@ -1,13 +1,10 @@
-import { LOG_LEVELS } from '@ecommerce/logger'
+import { baseConfig, jwtSecret } from '@ecommerce/service'
 import { z } from 'zod'
 
-const baseSchema = z.object({
-  PORT: z.coerce.number().default(3005),
-  METRICS_PORT: z.coerce.number().default(9464),
+const baseSchema = baseConfig({ port: 3005 }).extend({
   DATABASE_URL: z.string().url(),
-  JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
+  JWT_SECRET: jwtSecret,
   KAFKA_BROKER: z.string().default('localhost:9092'),
-  LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
 })
 
 const nonNegativeMs = z.coerce.number().int().nonnegative().default(0)
@@ -28,7 +25,7 @@ const processorSchema = z.discriminatedUnion('PAYMENT_PROCESSOR', [
 ])
 
 // discriminatedUnion ignores a default on its discriminator
-const envSchema = z.preprocess(
+export const envSchema = z.preprocess(
   (env) => ({ PAYMENT_PROCESSOR: 'stripe', ...(env as object) }),
   baseSchema.and(processorSchema),
 )

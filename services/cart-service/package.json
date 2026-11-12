@@ -10,12 +10,10 @@
   },
   "dependencies": {
     "@ecommerce/auth": "workspace:*",
-    "@ecommerce/docs": "workspace:*",
     "@ecommerce/http": "workspace:*",
     "@ecommerce/logger": "workspace:*",
-    "@ecommerce/metrics": "workspace:*",
+    "@ecommerce/service": "workspace:*",
     "@fastify/jwt": "^9.1.0",
-    "dotenv": "^16.4.7",
     "fastify": "^5.3.3",
     "fastify-type-provider-zod": "^4.0.2",
     "ioredis": "^5.4.0",

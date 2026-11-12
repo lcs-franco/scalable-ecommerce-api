@@ -10,6 +10,8 @@ Mechanical rules belong to lint (`pnpm lint`); this file holds only the judgemen
 ## Service structure
 
 - Follow the `buildApp(deps)` / `index.ts` wiring pattern ([CLAUDE.md](CLAUDE.md#key-patterns)).
+- Start every service through `runService` and build its app with `createServiceApp` (`@ecommerce/service`); never hand-write signal handling, `listen`, the metrics server or the plugin preamble. The gateway is the one exception for the app, not the lifecycle.
+- Register each resource with `onClose` right after it opens, so a failed startup closes it too.
 - Inject stateful dependencies (logger, db, clients, processors) through `buildApp(deps)`; never reach them through module-level singletons.
 
 ## Errors

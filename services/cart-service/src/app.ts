@@ -1,16 +1,5 @@
-import { authPlugin } from '@ecommerce/auth'
-import { DOCS_PREFIX, docsPlugin } from '@ecommerce/docs'
-import {
-  genRequestId,
-  registerErrorHandler,
-  registerRequestId,
-} from '@ecommerce/http'
-import { metricsPlugin } from '@ecommerce/metrics'
-import Fastify, { type FastifyBaseLogger } from 'fastify'
-import {
-  serializerCompiler,
-  validatorCompiler,
-} from 'fastify-type-provider-zod'
+import { createServiceApp } from '@ecommerce/service'
+import type { FastifyBaseLogger } from 'fastify'
 import type { RedisClient } from './redis.js'
 import { cartRoutes } from './routes/cart/cart.routes.js'
 import { createCartService } from './services/cart.service.js'
@@ -24,29 +13,11 @@ interface IBuildAppOptions {
 }
 
 export async function buildApp(opts: IBuildAppOptions) {
-  const app = Fastify({
-    loggerInstance: opts.logger,
-    genReqId: genRequestId,
-  })
-
-  app.setValidatorCompiler(validatorCompiler)
-  app.setSerializerCompiler(serializerCompiler)
-
-  registerErrorHandler(app)
-  registerRequestId(app)
-  await app.register(metricsPlugin)
-
-  await app.register(docsPlugin, { title: 'cart-service' })
-  await app.register(authPlugin, {
-    publicPrefixes: [DOCS_PREFIX],
+  const app = await createServiceApp({
+    name: 'cart-service',
+    logger: opts.logger,
     internalToken: opts.internalServiceToken,
   })
-
-  app.get(
-    '/health',
-    { config: { skipAuth: true }, schema: { hide: true } },
-    async () => ({ status: 'ok' }),
-  )
 
   const cartService = createCartService(opts.redis)
   const productClient = createProductClient(opts.productServiceUrl)

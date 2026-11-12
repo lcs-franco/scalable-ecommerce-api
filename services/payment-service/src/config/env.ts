@@ -1,4 +1,4 @@
-import 'dotenv/config'
-import { parseEnv } from './parse-env.js'
+import { loadConfig } from '@ecommerce/service'
+import { envSchema } from './parse-env.js'
 
-export const config = parseEnv(process.env)
+export const config = loadConfig(envSchema)

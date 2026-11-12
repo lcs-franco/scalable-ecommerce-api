@@ -1,21 +1,10 @@
-import { authPlugin } from '@ecommerce/auth'
-import { DOCS_PREFIX, docsPlugin } from '@ecommerce/docs'
-import {
-  genRequestId,
-  registerErrorHandler,
-  registerRequestId,
-} from '@ecommerce/http'
-import { metricsPlugin } from '@ecommerce/metrics'
-import Fastify, { type FastifyBaseLogger } from 'fastify'
-import {
-  serializerCompiler,
-  validatorCompiler,
-} from 'fastify-type-provider-zod'
+import { runMigrations } from '@ecommerce/db'
+import { createServiceApp } from '@ecommerce/service'
+import type { FastifyBaseLogger } from 'fastify'
 import type { createCartClient } from './clients/cart.client.js'
 import type { createProductClient } from './clients/product.client.js'
 import { saga } from './config/saga.js'
-import type { Db } from './db/index.js'
-import { runMigrations } from './db/migrate.js'
+import { MIGRATIONS_FOLDER, type Db } from './db/index.js'
 import { orderRoutes } from './routes/orders/order.routes.js'
 import {
   createOrderService,
@@ -40,28 +29,12 @@ interface IBuildAppOptions {
 export async function buildApp(opts: IBuildAppOptions) {
   const { cartClient, db, productClient, createSaga } = opts
 
-  const app = Fastify({
-    loggerInstance: opts.logger,
-    genReqId: genRequestId,
+  await runMigrations(db, MIGRATIONS_FOLDER)
+
+  const app = await createServiceApp({
+    name: 'order-service',
+    logger: opts.logger,
   })
-
-  app.setValidatorCompiler(validatorCompiler)
-  app.setSerializerCompiler(serializerCompiler)
-
-  await runMigrations(db)
-
-  registerErrorHandler(app)
-  registerRequestId(app)
-  await app.register(metricsPlugin)
-
-  await app.register(docsPlugin, { title: 'order-service' })
-  await app.register(authPlugin, { publicPrefixes: [DOCS_PREFIX] })
-
-  app.get(
-    '/health',
-    { config: { skipAuth: true }, schema: { hide: true } },
-    async () => ({ status: 'ok' }),
-  )
 
   app.decorate(
     'orderService',

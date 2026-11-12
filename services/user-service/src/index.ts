@@ -1,67 +1,32 @@
-import { createKafkaLogCreator, createProducer } from '@ecommerce/events'
+import { createDb } from '@ecommerce/db'
+import { createKafka, createProducer } from '@ecommerce/events'
 import { createOutboxRelay, outboxBacklog } from '@ecommerce/events/outbox'
-import { createLogger } from '@ecommerce/logger'
-import {
-  observeOutbox,
-  observePgPool,
-  startMetricsServer,
-} from '@ecommerce/metrics'
-import { Kafka, logLevel } from 'kafkajs'
+import { observeOutbox, observePgPool } from '@ecommerce/metrics'
+import { runService } from '@ecommerce/service'
 import { buildApp } from './app.js'
 import { config } from './config.js'
-import { createDb } from './db/index.js'
+import * as schema from './db/schema.js'
 
-async function main() {
-  const log = createLogger({ service: 'user-service', level: config.LOG_LEVEL })
+const name = 'user-service'
 
-  const { db, pool } = createDb(config.DATABASE_URL)
+await runService({ name, config }, async ({ log, onClose, afterListen }) => {
+  const { db, pool } = createDb({ url: config.DATABASE_URL, schema })
 
+  onClose('postgres', () => pool.end())
   observePgPool(pool)
   observeOutbox(() => outboxBacklog(db))
 
-  const kafka = new Kafka({
-    clientId: 'user-service',
-    brokers: [config.KAFKA_BROKER],
-    logCreator: createKafkaLogCreator(log),
-    logLevel: logLevel.DEBUG,
-  })
-  const producer = createProducer(kafka)
+  const producer = createProducer(
+    createKafka({ service: name, broker: config.KAFKA_BROKER, log }),
+  )
 
+  onClose('kafka producer', () => producer.disconnect())
   await producer.connect()
-
-  const app = await buildApp({ db, logger: log })
 
   const relay = createOutboxRelay({ db, producer, log })
 
-  const metrics = await startMetricsServer({
-    port: config.METRICS_PORT,
-    service: 'user-service',
-  })
+  afterListen(() => relay.start())
+  onClose('outbox relay', () => relay.stop())
 
-  const shutdown = async () => {
-    await app.close()
-    await metrics.close()
-    await relay.stop()
-    await producer.disconnect()
-    await pool.end()
-  }
-
-  const onSignal = () => {
-    shutdown().catch((err) => {
-      log.error({ err }, 'shutdown failed')
-      process.exit(1)
-    })
-  }
-
-  process.on('SIGTERM', onSignal)
-  process.on('SIGINT', onSignal)
-
-  await app.listen({ port: config.PORT, host: '0.0.0.0' })
-  relay.start()
-}
-
-main().catch((err) => {
-  // eslint-disable-next-line no-console
-  console.error('failed to start user-service', err)
-  process.exit(1)
+  return buildApp({ db, logger: log })
 })

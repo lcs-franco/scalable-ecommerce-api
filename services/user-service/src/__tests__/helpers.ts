@@ -1,8 +1,9 @@
+import { createDb } from '@ecommerce/db'
 import { createLogger } from '@ecommerce/logger'
 import { asc, sql } from 'drizzle-orm'
 import { buildApp } from '../app.js'
-import { createDb } from '../db/index.js'
-import { outbox } from '../db/schema.js'
+import type { Db } from '../db/index.js'
+import * as schema from '../db/schema.js'
 
 process.env.JWT_SECRET ??= 'test-secret'
 
@@ -11,7 +12,7 @@ const TEST_DATABASE_URL =
   'postgresql://ecommerce:ecommerce_dev@localhost:5432/user_db'
 
 export async function createTestApp() {
-  const { db, pool } = createDb(TEST_DATABASE_URL)
+  const { db, pool } = createDb({ url: TEST_DATABASE_URL, schema })
 
   const app = await buildApp({
     db,
@@ -23,8 +24,11 @@ export async function createTestApp() {
   return { app, db, pool }
 }
 
-export async function outboxEvents(db: ReturnType<typeof createDb>['db']) {
-  const rows = await db.select().from(outbox).orderBy(asc(outbox.createdAt))
+export async function outboxEvents(db: Db) {
+  const rows = await db
+    .select()
+    .from(schema.outbox)
+    .orderBy(asc(schema.outbox.createdAt))
 
   return rows.map((row) => ({
     topic: row.topic,
@@ -33,7 +37,7 @@ export async function outboxEvents(db: ReturnType<typeof createDb>['db']) {
   }))
 }
 
-export async function cleanDb(db: ReturnType<typeof createDb>['db']) {
+export async function cleanDb(db: Db) {
   await db.execute(sql`DELETE FROM outbox`)
   await db.execute(sql`DELETE FROM refresh_tokens`)
   await db.execute(sql`DELETE FROM users`)

@@ -1,10 +1,11 @@
+import { createDb } from '@ecommerce/db'
 import { createLogger } from '@ecommerce/logger'
 import type { TopicName } from '@ecommerce/events'
 import { asc, eq, sql } from 'drizzle-orm'
 import { buildApp } from '../app.js'
 import { saga } from '../config/saga.js'
-import { createDb } from '../db/index.js'
-import { outbox } from '../db/schema.js'
+import type { Db } from '../db/index.js'
+import * as schema from '../db/schema.js'
 
 process.env.JWT_SECRET ??= 'test-secret-must-be-at-least-32-chars!'
 
@@ -58,7 +59,7 @@ export async function createTestApp(overrides?: {
   cartClient?: ReturnType<typeof mockCartClient>
   productClient?: ReturnType<typeof mockProductClient>
 }) {
-  const { db, pool } = createDb(TEST_DATABASE_URL)
+  const { db, pool } = createDb({ url: TEST_DATABASE_URL, schema })
 
   const app = await buildApp({
     db,
@@ -99,15 +100,12 @@ export function userToken(
   })
 }
 
-export async function outboxEvents(
-  db: ReturnType<typeof createDb>['db'],
-  topic?: TopicName,
-) {
+export async function outboxEvents(db: Db, topic?: TopicName) {
   const rows = await db
     .select()
-    .from(outbox)
-    .where(topic ? eq(outbox.topic, topic) : undefined)
-    .orderBy(asc(outbox.createdAt))
+    .from(schema.outbox)
+    .where(topic ? eq(schema.outbox.topic, topic) : undefined)
+    .orderBy(asc(schema.outbox.createdAt))
 
   return rows.map((row) => ({
     topic: row.topic,
@@ -116,7 +114,7 @@ export async function outboxEvents(
   }))
 }
 
-export async function cleanDb(db: ReturnType<typeof createDb>['db']) {
+export async function cleanDb(db: Db) {
   await db.execute(sql`DELETE FROM outbox`)
   await db.execute(sql`DELETE FROM order_items`)
   await db.execute(sql`DELETE FROM orders`)
