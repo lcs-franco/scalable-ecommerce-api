@@ -18,7 +18,8 @@ export const options: Options = {
       maxVUs: 20,
     },
   },
-  setupTimeout: '2m',
+  // Logins are bcrypt on a user-service capped at 0.5 CPU: ~2 per second
+  setupTimeout: '5m',
   summaryTrendStats: SUMMARY_TREND_STATS,
   thresholds: thresholds({
     '/api/products': DEFAULT_LATENCY,

@@ -4,7 +4,7 @@ name: ecommerce-stress
 include:
   - path: [../docker/infra.yaml, infra.override.yaml]
     env_file: [../.env, stress.env]
-  - path: ../docker/services.yaml
+  - path: [../docker/services.yaml, services.override.yaml]
     env_file: [../.env, stress.env]
   - path: seed.yaml
     env_file: [../.env, stress.env]

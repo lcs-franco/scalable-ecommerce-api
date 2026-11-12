@@ -1,0 +1,32 @@
+# Limits: see "Limits and faults" in README.md
+
+x-node-limits: &node-limits
+  cpus: 0.5
+  mem_limit: 256m
+
+services:
+  api-gateway:
+    cpus: 1
+    mem_limit: 256m
+
+  user-service:
+    <<: *node-limits
+
+  product-service:
+    <<: *node-limits
+
+  cart-service:
+    <<: *node-limits
+
+  order-service:
+    <<: *node-limits
+
+  payment-service:
+    <<: *node-limits
+
+  user-seed: *node-limits
+
+  product-seed: *node-limits
+
+  notification-service:
+    <<: *node-limits

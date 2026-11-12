@@ -11,6 +11,8 @@ services:
     image: postgres:16-alpine
     restart: 'no'
     command: ['sh', '/seed/seed.sh']
+    cpus: 0.5
+    mem_limit: 256m
     environment:
       <<: *seed-env
       PGHOST: postgres
@@ -30,6 +32,8 @@ services:
     image: redis:7-alpine
     restart: 'no'
     command: ['sh', '/seed/cart.sh']
+    cpus: 0.5
+    mem_limit: 128m
     environment: *seed-env
     volumes:
       - ./seed:/seed:ro
