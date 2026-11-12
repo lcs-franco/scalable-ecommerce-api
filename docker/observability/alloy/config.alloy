@@ -1,0 +1,45 @@
+// The Docker socket sees every container on the host: keep only this compose project
+discovery.docker "project" {
+  host = "unix:///var/run/docker.sock"
+  // The default 1m would miss the first minute of a container started after Alloy
+  refresh_interval = "5s"
+
+  filter {
+    name   = "label"
+    values = ["com.docker.compose.project=" + sys.env("COMPOSE_PROJECT")]
+  }
+}
+
+discovery.relabel "project" {
+  targets = discovery.docker.project.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+  }
+}
+
+loki.source.docker "project" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.project.output
+  forward_to = [loki.process.pino.receiver]
+}
+
+// reqId stays in the line (parsed at query time): as a label its cardinality would explode
+loki.process "pino" {
+  forward_to = [loki.write.loki.receiver]
+
+  stage.json {
+    expressions = { level = "level" }
+  }
+
+  stage.labels {
+    values = { level = "" }
+  }
+}
+
+loki.write "loki" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

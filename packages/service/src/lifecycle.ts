@@ -1,4 +1,9 @@
-import { createLogger, type Logger, type LogLevel } from '@ecommerce/logger'
+import {
+  createLogger,
+  type LogFormat,
+  type Logger,
+  type LogLevel,
+} from '@ecommerce/logger'
 import { startMetricsServer } from '@ecommerce/metrics'
 import type { FastifyInstance } from 'fastify'
 
@@ -16,6 +21,7 @@ export interface IServiceConfig {
   PORT: number
   METRICS_PORT: number
   LOG_LEVEL: LogLevel
+  LOG_FORMAT: LogFormat
 }
 
 export interface IServiceProcess {
@@ -79,7 +85,11 @@ export async function runService(
 ) {
   const { name, config } = opts
   const proc = opts.process ?? process
-  const log = createLogger({ service: name, level: config.LOG_LEVEL })
+  const log = createLogger({
+    service: name,
+    level: config.LOG_LEVEL,
+    format: config.LOG_FORMAT,
+  })
 
   const resources: INamedTask[] = []
   const starts: Task[] = []

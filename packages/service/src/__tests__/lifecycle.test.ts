@@ -7,7 +7,12 @@ import {
   type IServiceProcess,
 } from '../index.js'
 
-const config = { PORT: 0, METRICS_PORT: 0, LOG_LEVEL: 'silent' } as const
+const config = {
+  PORT: 0,
+  METRICS_PORT: 0,
+  LOG_LEVEL: 'silent',
+  LOG_FORMAT: 'json',
+} as const
 
 function fakeProcess() {
   const emitter = new EventEmitter()

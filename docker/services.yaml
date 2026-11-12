@@ -26,6 +26,7 @@ services:
       PORT: 3000
       METRICS_PORT: 9464
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
       REDIS_URL: redis://redis:6379
       JWT_SECRET: *jwt-secret
       USER_SERVICE_URL: http://user-service:3001
@@ -56,6 +57,7 @@ services:
       PORT: 3001
       METRICS_PORT: 9464
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
       DATABASE_URL: postgresql://${POSTGRES_USER:-ecommerce}:${POSTGRES_PASSWORD:-ecommerce_dev}@postgres:5432/user_db
       KAFKA_BROKER: kafka:29092
       JWT_SECRET: *jwt-secret
@@ -81,6 +83,7 @@ services:
       PORT: 3002
       METRICS_PORT: 9464
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
       DATABASE_URL: postgresql://${POSTGRES_USER:-ecommerce}:${POSTGRES_PASSWORD:-ecommerce_dev}@postgres:5432/product_db
       JWT_SECRET: *jwt-secret
       INTERNAL_SERVICE_TOKEN: *internal-token
@@ -103,6 +106,7 @@ services:
       PORT: 3003
       METRICS_PORT: 9464
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
       REDIS_URL: redis://redis:6379
       JWT_SECRET: *jwt-secret
       PRODUCT_SERVICE_URL: http://product-service:3002
@@ -118,6 +122,7 @@ services:
       PORT: 3004
       METRICS_PORT: 9464
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
       DATABASE_URL: postgresql://${POSTGRES_USER:-ecommerce}:${POSTGRES_PASSWORD:-ecommerce_dev}@postgres:5432/order_db
       JWT_SECRET: *jwt-secret
       KAFKA_BROKER: kafka:29092
@@ -136,6 +141,7 @@ services:
       PORT: 3005
       METRICS_PORT: 9464
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
       DATABASE_URL: postgresql://${POSTGRES_USER:-ecommerce}:${POSTGRES_PASSWORD:-ecommerce_dev}@postgres:5432/payment_db
       JWT_SECRET: *jwt-secret
       KAFKA_BROKER: kafka:29092
@@ -156,6 +162,7 @@ services:
       PORT: 3006
       METRICS_PORT: 9464
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
       KAFKA_BROKER: kafka:29092
       REDIS_URL: redis://redis:6379
       SMTP_HOST: mailpit

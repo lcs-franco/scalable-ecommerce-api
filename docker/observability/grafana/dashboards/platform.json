@@ -358,13 +358,63 @@
       ]
     },
     {
+      "id": 41,
+      "type": "row",
+      "title": "Logs",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 17,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 42,
+      "type": "logs",
+      "title": "Service logs",
+      "description": "Follow one request across services in Explore: {service=~\".+\"} | json | reqId=\"<id>\"",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 18,
+        "w": 24,
+        "h": 10
+      },
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending",
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "prettifyLogMessage": false,
+        "showLabels": false,
+        "showCommonLabels": false
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "{service=~\"$service\"}",
+          "queryType": "range"
+        }
+      ]
+    },
+    {
       "type": "row",
       "title": "Node runtime",
       "id": 8,
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 17,
+        "y": 28,
         "w": 24,
         "h": 1
       },
@@ -380,7 +430,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 18,
+        "y": 29,
         "w": 8,
         "h": 8
       },
@@ -428,7 +478,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 18,
+        "y": 29,
         "w": 8,
         "h": 8
       },
@@ -476,7 +526,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 18,
+        "y": 29,
         "w": 8,
         "h": 8
       },
@@ -524,7 +574,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 26,
+        "y": 37,
         "w": 12,
         "h": 8
       },
@@ -572,7 +622,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 26,
+        "y": 37,
         "w": 12,
         "h": 8
       },
@@ -617,7 +667,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 34,
+        "y": 45,
         "w": 24,
         "h": 1
       },
@@ -633,7 +683,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 35,
+        "y": 46,
         "w": 8,
         "h": 8
       },
@@ -681,7 +731,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 35,
+        "y": 46,
         "w": 8,
         "h": 8
       },
@@ -729,7 +779,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 35,
+        "y": 46,
         "w": 8,
         "h": 8
       },
@@ -774,7 +824,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 43,
+        "y": 54,
         "w": 24,
         "h": 1
       },
@@ -790,7 +840,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 44,
+        "y": 55,
         "w": 12,
         "h": 8
       },
@@ -838,7 +888,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 44,
+        "y": 55,
         "w": 12,
         "h": 8
       },
@@ -883,7 +933,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 52,
+        "y": 63,
         "w": 24,
         "h": 1
       },
@@ -899,7 +949,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 53,
+        "y": 64,
         "w": 8,
         "h": 8
       },
@@ -947,7 +997,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 53,
+        "y": 64,
         "w": 8,
         "h": 8
       },
@@ -995,7 +1045,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 53,
+        "y": 64,
         "w": 8,
         "h": 8
       },
@@ -1040,7 +1090,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 61,
+        "y": 72,
         "w": 24,
         "h": 1
       },
@@ -1056,7 +1106,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 62,
+        "y": 73,
         "w": 8,
         "h": 8
       },
@@ -1104,7 +1154,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 62,
+        "y": 73,
         "w": 8,
         "h": 8
       },
@@ -1152,7 +1202,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 62,
+        "y": 73,
         "w": 8,
         "h": 8
       },
@@ -1197,7 +1247,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 70,
+        "y": 81,
         "w": 24,
         "h": 1
       },
@@ -1213,7 +1263,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 71,
+        "y": 82,
         "w": 8,
         "h": 8
       },
@@ -1261,7 +1311,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 71,
+        "y": 82,
         "w": 8,
         "h": 8
       },
@@ -1318,7 +1368,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 71,
+        "y": 82,
         "w": 8,
         "h": 8
       },
@@ -1366,7 +1416,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 79,
+        "y": 90,
         "w": 8,
         "h": 8
       },
@@ -1414,7 +1464,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 79,
+        "y": 90,
         "w": 8,
         "h": 8
       },
@@ -1462,7 +1512,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 79,
+        "y": 90,
         "w": 8,
         "h": 8
       },
@@ -1507,7 +1557,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 87,
+        "y": 98,
         "w": 24,
         "h": 1
       },
@@ -1523,7 +1573,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 88,
+        "y": 99,
         "w": 6,
         "h": 8
       },
@@ -1571,7 +1621,7 @@
       },
       "gridPos": {
         "x": 6,
-        "y": 88,
+        "y": 99,
         "w": 6,
         "h": 8
       },
@@ -1628,7 +1678,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 88,
+        "y": 99,
         "w": 6,
         "h": 8
       },
@@ -1676,7 +1726,7 @@
       },
       "gridPos": {
         "x": 18,
-        "y": 88,
+        "y": 99,
         "w": 6,
         "h": 8
       },

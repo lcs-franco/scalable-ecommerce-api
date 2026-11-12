@@ -225,7 +225,7 @@ Shopper journey through the gateway: `POST /api/auth/register` → `POST /api/au
 
 `pnpm dev` (stop with `pnpm dev:down`) runs the platform with hot reload: each service runs `tsx watch` with its `src/` mounted, and ports 3001–3006 are exposed for debugging. Changes to `packages/*` or dependencies need a rebuild (`pnpm dev` builds on start).
 
-`pnpm obs` (stop with `pnpm obs:down`) does the same plus the `observability` profile: Grafana at http://localhost:3100 (no login, opens on the platform dashboard) and Prometheus at http://localhost:9090. Services expose `/metrics` only inside the compose network, on port 9464.
+`pnpm obs` (stop with `pnpm obs:down`) does the same plus the `observability` profile: Grafana at http://localhost:3100 (no login, opens on the platform dashboard, with the services' logs from Loki) and Prometheus at http://localhost:9090. To follow one request across services, open Explore on the Loki datasource and query `{service=~".+"} | json | reqId="<x-request-id>"` (the gateway echoes the id in the `x-request-id` response header). Services expose `/metrics` only inside the compose network, on port 9464.
 
 ## Testing
 

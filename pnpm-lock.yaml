@@ -401,6 +401,10 @@ importers:
       pino-pretty:
         specifier: ^13.1.3
         version: 13.1.3
+    devDependencies:
+      vitest:
+        specifier: ^2.1.9
+        version: 2.1.9(@types/node@22.20.2)
 
   packages/metrics:
     dependencies:
