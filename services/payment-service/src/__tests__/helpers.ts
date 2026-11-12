@@ -44,12 +44,17 @@ export function stubProcessor() {
 }
 
 export async function createTestApp(opts?: { processor?: IPaymentProcessor }) {
-  const { db, pool } = createDb({ url: TEST_DATABASE_URL, schema })
+  const logger = createLogger({ service: 'payment-service', level: 'silent' })
+  const { db, pool } = createDb({
+    url: TEST_DATABASE_URL,
+    schema,
+    log: logger,
+  })
   const stub = stubProcessor()
 
   const app = await buildApp({
     db,
-    logger: createLogger({ service: 'payment-service', level: 'silent' }),
+    logger,
     processor: opts?.processor ?? stub.processor,
   })
 

@@ -48,7 +48,11 @@ const silentLog = { info: () => {}, error: () => {} }
 const DAY_MS = 24 * 60 * 60 * 1000
 
 describe('outbox relay', () => {
-  const { db, pool } = createDb({ url: TEST_DATABASE_URL, schema })
+  const { db, pool } = createDb({
+    url: TEST_DATABASE_URL,
+    schema,
+    log: silentLog,
+  })
 
   afterEach(async () => {
     await cleanDb(db)

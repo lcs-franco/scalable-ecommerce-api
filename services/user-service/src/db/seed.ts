@@ -1,4 +1,5 @@
 import { createDb, runMigrations } from '@ecommerce/db'
+import { createLogger } from '@ecommerce/logger'
 import bcrypt from 'bcrypt'
 import { eq } from 'drizzle-orm'
 import { config } from '../config.js'
@@ -15,7 +16,11 @@ async function seed() {
     throw new Error('ADMIN_PASSWORD env var is required for seeding')
   }
 
-  const { db, pool } = createDb({ url: config.DATABASE_URL, schema })
+  const { db, pool } = createDb({
+    url: config.DATABASE_URL,
+    schema,
+    log: createLogger({ service: 'user-seed', level: config.LOG_LEVEL }),
+  })
 
   await runMigrations(db, MIGRATIONS_FOLDER)
 
