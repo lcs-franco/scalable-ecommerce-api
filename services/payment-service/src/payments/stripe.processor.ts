@@ -30,6 +30,17 @@ export function createStripeProcessor(
     )
   }
 
+  async function cancelIntent(id: string) {
+    try {
+      await stripe.paymentIntents.cancel(id)
+    } catch (err) {
+      log.warn(
+        { err, paymentIntentId: id },
+        'stripe payment intent cancel failed',
+      )
+    }
+  }
+
   async function processPayment(
     input: IProcessPaymentInput,
   ): Promise<PaymentResult> {
@@ -38,6 +49,17 @@ export function createStripeProcessor(
 
       if (intent.status === 'succeeded') {
         return { success: true, providerPaymentId: intent.id }
+      }
+
+      // Payment runs from order.placed, so the shopper is gone and cannot complete 3DS.
+      if (intent.status === 'requires_action') {
+        await cancelIntent(intent.id)
+
+        return {
+          success: false,
+          reason: 'authentication required',
+          providerPaymentId: intent.id,
+        }
       }
 
       return {

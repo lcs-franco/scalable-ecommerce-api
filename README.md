@@ -245,7 +245,7 @@ pnpm test
 ## Known limitations and next steps
 
 - No dead-letter topic or retry policy for handler failures ([#34](https://github.com/lcs-franco/scalable-ecommerce-api/issues/34)).
-- Payments that need 3D Secure (`requires_action`) are not handled ([#57](https://github.com/lcs-franco/scalable-ecommerce-api/issues/57)).
+- Cards that require 3D Secure / SCA (`requires_action`) cannot be charged: payment runs asynchronously after the order is placed, so the shopper is not there to authenticate. payment-service cancels the PaymentIntent and reports the payment as failed, which cancels the order. The full 3DS flow (confirming client-side with Stripe.js) is not implemented.
 - No automated end-to-end test of the shopper journey through the gateway ([#35](https://github.com/lcs-franco/scalable-ecommerce-api/issues/35)).
 - `X-Request-Id` reaches the services but is not yet in their logs ([#46](https://github.com/lcs-franco/scalable-ecommerce-api/issues/46)).
 - The restore-stock compensation in the placement saga is not idempotent ([#21](https://github.com/lcs-franco/scalable-ecommerce-api/issues/21)).
