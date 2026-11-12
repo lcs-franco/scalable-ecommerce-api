@@ -25,7 +25,16 @@ describe('baseConfig', () => {
       PORT: 3001,
       METRICS_PORT: 9464,
       LOG_LEVEL: 'info',
+      LOG_FORMAT: 'json',
     })
+  })
+
+  it('should accept the pretty log format and reject unknown ones', () => {
+    expect(schema.parse({ ...validEnv, LOG_FORMAT: 'pretty' })).toMatchObject({
+      LOG_FORMAT: 'pretty',
+    })
+
+    expect(() => schema.parse({ ...validEnv, LOG_FORMAT: 'text' })).toThrow()
   })
 })
 

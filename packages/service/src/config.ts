@@ -1,4 +1,4 @@
-import { LOG_LEVELS } from '@ecommerce/logger'
+import { LOG_FORMATS, LOG_LEVELS } from '@ecommerce/logger'
 import { z } from 'zod'
 
 export const jwtSecret = z
@@ -14,6 +14,7 @@ export function baseConfig({ port }: { port: number }) {
     PORT: z.coerce.number().default(port),
     METRICS_PORT: z.coerce.number().default(9464),
     LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
+    LOG_FORMAT: z.enum(LOG_FORMATS).default('json'),
   })
 }
 
