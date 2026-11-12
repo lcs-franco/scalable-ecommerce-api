@@ -10,7 +10,7 @@ import * as schema from './db/schema.js'
 const name = 'user-service'
 
 await runService({ name, config }, async ({ log, onClose, afterListen }) => {
-  const { db, pool } = createDb({ url: config.DATABASE_URL, schema })
+  const { db, pool } = createDb({ url: config.DATABASE_URL, schema, log })
 
   onClose('postgres', () => pool.end())
   observePgPool(pool)

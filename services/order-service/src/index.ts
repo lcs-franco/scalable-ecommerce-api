@@ -18,7 +18,7 @@ import { setupConsumers } from './kafka/consumers.js'
 const name = 'order-service'
 
 await runService({ name, config }, async ({ log, onClose, afterListen }) => {
-  const { db, pool } = createDb({ url: config.DATABASE_URL, schema })
+  const { db, pool } = createDb({ url: config.DATABASE_URL, schema, log })
 
   onClose('postgres', () => pool.end())
   observePgPool(pool)

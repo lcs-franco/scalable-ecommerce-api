@@ -59,11 +59,16 @@ export async function createTestApp(overrides?: {
   cartClient?: ReturnType<typeof mockCartClient>
   productClient?: ReturnType<typeof mockProductClient>
 }) {
-  const { db, pool } = createDb({ url: TEST_DATABASE_URL, schema })
+  const logger = createLogger({ service: 'order-service', level: 'silent' })
+  const { db, pool } = createDb({
+    url: TEST_DATABASE_URL,
+    schema,
+    log: logger,
+  })
 
   const app = await buildApp({
     db,
-    logger: createLogger({ service: 'order-service', level: 'silent' }),
+    logger,
     cartClient: overrides?.cartClient ?? mockCartClient(),
     productClient: overrides?.productClient ?? mockProductClient(),
     createSaga: saga,

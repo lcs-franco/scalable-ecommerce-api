@@ -12,11 +12,16 @@ const TEST_DATABASE_URL =
   'postgresql://ecommerce:ecommerce_dev@localhost:5432/product_db'
 
 export async function createTestApp() {
-  const { db, pool } = createDb({ url: TEST_DATABASE_URL, schema })
+  const logger = createLogger({ service: 'product-service', level: 'silent' })
+  const { db, pool } = createDb({
+    url: TEST_DATABASE_URL,
+    schema,
+    log: logger,
+  })
 
   const app = await buildApp({
     db,
-    logger: createLogger({ service: 'product-service', level: 'silent' }),
+    logger,
     internalServiceToken: 'test-internal-token',
   })
 
