@@ -35,3 +35,11 @@ _Avoid_: mock, fake PSP
 **Whale**:
 A user with an extreme order history, used to expose queries that scale with one user's data.
 _Avoid_: power user, heavy user
+
+**Fault**:
+A degradation injected into one dependency of the stress world during an attack (added latency, timeout, cut connection, paused container).
+_Avoid_: toxic, chaos, failure
+
+**Limits**:
+The CPU and memory ceiling of each container in the stress world, part of every attack's result.
+_Avoid_: quotas, resources

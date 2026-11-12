@@ -2,7 +2,7 @@
 
 A separate compose project (`ecommerce-stress`) with a deliberately absurd dataset, so the stress campaign sees what breaks under real data volume. Decisions live in issue #72.
 
-It runs alongside `pnpm dev`: own volumes, host ports shifted by `stress.env` (gateway 4000, Postgres 6432, Redis 7380, Kafka 10092, Mailpit 2025/9025, Grafana 4100, Prometheus 10090). Secrets come from the root `.env`.
+It runs alongside `pnpm dev`: own volumes, host ports shifted by `stress.env` (gateway 4000, Postgres 6432, Redis 7380, Kafka 10092, Mailpit 2025/9025, Grafana 4100, Prometheus 10090, Toxiproxy API 9474). Every container runs under [limits](#limits-and-faults). Secrets come from the root `.env`.
 
 ## Usage
 
@@ -47,7 +47,7 @@ SEED_SCALE=1 stress/scripts/attack.sh smoke --quiet --no-color
 stress/scripts/verify.sh --since '<timestamp>' --hot-initial <stock>
 ```
 
-`attack.sh` records the run start (Postgres clock) and the hot product's stock, runs k6 from its official image (service `k6`, profile `k6`, no resource limits), then `verify.sh`. It exits non-zero if k6 failed (a threshold crossed: errors or latency) or an invariant does not hold, so either verdict means the platform broke. k6 pushes its metrics to Prometheus (remote write, k6 row in the Grafana dashboard) only when the `prometheus` container is running.
+`attack.sh` records the run start (Postgres clock) and the hot product's stock, removes every toxic, runs k6 from its official image (service `k6`, profile `k6`, no resource limits), then `verify.sh`, then lists the `die`/`oom` Docker events of the stack's containers during the run. It exits non-zero if k6 failed (a threshold crossed: errors or latency), an invariant does not hold or a container died (services restart on failure, so a crash would otherwise show only as a few errors); any of these means the platform broke. k6 pushes its metrics to Prometheus (remote write, k6 row in the Grafana dashboard) only when the `prometheus` container is running.
 
 `verify.sh` polls until the run settles (no pending run order, no unpublished outbox event, no `stock_restorations` row) or `VERIFY_TIMEOUT` passes, then `checks/after-run.sql` asserts, over orders created since the run start:
 
@@ -62,9 +62,10 @@ At full scale `verify.sh` takes ~10 s (it scans `products`, `orders` and `order_
 
 A scenario is a file in `scenarios/` that declares its executors (always open model: `constant-arrival-rate` or `ramping-arrival-rate`, so overload shows up as latency and errors), its thresholds and `handleSummary`. It sends every request through `lib/http.ts`, which tags `name` with the route template (`/api/products/:id`).
 
-| Scenario | Traffic                                                                                          |
-| -------- | ------------------------------------------------------------------------------------------------ |
-| `smoke`  | 1 iteration/s for 1 min: list products, open one, add it to the cart, check out (fake processor) |
+| Scenario    | Traffic                                                                                                             |
+| ----------- | ------------------------------------------------------------------------------------------------------------------- |
+| `smoke`     | 1 iteration/s for 1 min: list products, open one, add it to the cart, check out (fake processor)                    |
+| `calibrate` | The smoke journey ramping from 1 to `CALIBRATE_MAX_RATE` iterations/s over 5 min, to find where the limits saturate |
 
 `lib/`:
 
@@ -72,6 +73,7 @@ A scenario is a file in `scenarios/` that declares its executors (always open mo
 - `world.ts`: world size from `SEED_*`, ids as in `seed/common.sql`, `pickProduct()` with the seed's popularity, the hot product excluded unless `{ includeHot: true }`.
 - `thresholds.ts`: per-route p95/p99 plus error-rate thresholds and the defaults.
 - `summary.ts`: prints the summary and writes `results/<scenario>-<timestamp>.json` (gitignored).
+- `toxics.ts`: `addToxic()`, `removeToxic()`, `setProxyEnabled()` and `clearFaults()` against the Toxiproxy API, for the [faults](#faults) a scenario injects.
 
 ### Knobs
 
@@ -79,6 +81,7 @@ A scenario is a file in `scenarios/` that declares its executors (always open mo
 | --------------------------------------------- | ------------- | ------------------------------------------------------------------------------ |
 | `SEED_SCALE` / `SEED_PRODUCTS` / `SEED_USERS` | as seeded     | World size k6 derives ids from                                                 |
 | `K6_USERS`                                    | `200`         | Users logged in by `setup()`                                                   |
+| `CALIBRATE_MAX_RATE`                          | `100`         | Final rate of `calibrate` (pass it as `-e CALIBRATE_MAX_RATE=…`)               |
 | `VERIFY_TIMEOUT`                              | `60`          | Seconds `verify.sh` waits for the run to settle                                |
 | `RATE_LIMIT_ANONYMOUS` / `_AUTHENTICATED`     | `1000000`     | Gateway limits per minute (`stress.env`); the limiter stays in the path        |
 | `PAYMENT_PROCESSOR`                           | `fake`        | Payment processor (`stress.env`); `stripe` sends checkouts to Stripe test mode |
@@ -105,6 +108,63 @@ docker compose -f stress/compose.yaml up -d && docker wait ecommerce-stress-smok
 stress/scripts/attack.sh smoke
 docker compose -f stress/compose.yaml down -v
 ```
+
+## Limits and faults
+
+Decisions live in issue #74.
+
+### Limits
+
+Every container of the stress world has a CPU and memory ceiling, so the platform saturates at a load one laptop generates, and the same load gives the same result on another machine. They are part of every result: a number quoted without them means nothing. Services set them in `services.override.yaml`, infrastructure in `infra.override.yaml`, observability in `docker/observability.yaml`; k6 has none.
+
+| Container                                                       | `cpus`     | `mem_limit`      | Note                                           |
+| --------------------------------------------------------------- | ---------- | ---------------- | ---------------------------------------------- |
+| `api-gateway`                                                   | 1          | 256m             | every request crosses it                       |
+| each other service                                              | 0.5        | 256m             | Node sizes its heap from the cgroup limit      |
+| `postgres`                                                      | 2          | 2g               | the page cache counts against the limit        |
+| `kafka`                                                         | 1          | 1g               | heap pinned to 512 MB (`KAFKA_HEAP_OPTS`)      |
+| `redis`                                                         | 0.5        | 128m             |                                                |
+| `toxiproxy`                                                     | 1          | 128m             | in the path of every proxied call              |
+| seeds (`user-seed`, `product-seed`, `stress-seed`, `cart-seed`) | 0.5        | 256m (cart 128m) | clients only: the seed's work runs in Postgres |
+| `mailpit` / `kafka-init`                                        | 0.25 / 0.5 | 128m / 512m      |                                                |
+
+**Calibration** (2026-11-11, smoke world, `attack.sh calibrate -e CALIBRATE_MAX_RATE=200`): the journey holds p95 ≈ 5 ms up to ~55 iterations/s (~220 req/s); at ~65 iterations/s `product-service` sits at its 0.5 CPU (throttled in 99% of CFS periods), throughput stops growing and p95 jumps to ~1 s. k6 used 0.16 of a core. The rule: the platform must saturate at a rate k6 generates with room to spare; if a change of machine or code moves the knee past what k6 can push, lower the limits, not the other way around.
+
+Side effects of the limits worth knowing before reading a result:
+
+- `setup()` logs users in at ~2 per second (bcrypt, 12 rounds, on 0.5 CPU), so 200 users take ~2 minutes; scenarios allow 5.
+- At full scale `GET /api/products` sorts all of `products` by `created_at` (no index): a 3.8 GB sequential scan that no longer fits the 2 GB page cache, ~3 s per call, so the smoke journey breaks below 1 iteration/s there. That is the data-volume attack's (#75) to diagnose; calibrate in the smoke world.
+- The payment consumer settles ~5 orders per second (one partition, one fake processor call of 200 ms + jitter at a time) with almost no CPU: any checkout rate above that leaves orders `pending` and `verify.sh` reports them. That is the dependency attack's (#77) slow-PSP hypothesis.
+
+### Faults
+
+Toxiproxy (`toxiproxy.yaml`, API on host port 9474) sits on the paths the attacks target. Traffic always goes through it, even with no toxic, so a baseline and a fault run share one topology. Seeds talk to Postgres directly.
+
+| Proxy (`toxiproxy.json`) | Listens on        | Upstream               | Client                                              |
+| ------------------------ | ----------------- | ---------------------- | --------------------------------------------------- |
+| `order-product`          | `toxiproxy:13002` | `product-service:3002` | `order-service`                                     |
+| `order-cart`             | `toxiproxy:13003` | `cart-service:3003`    | `order-service`                                     |
+| `user-postgres`          | `toxiproxy:15431` | `postgres:5432`        | `user-service`                                      |
+| `product-postgres`       | `toxiproxy:15432` | `postgres:5432`        | `product-service`                                   |
+| `order-postgres`         | `toxiproxy:15433` | `postgres:5432`        | `order-service`                                     |
+| `payment-postgres`       | `toxiproxy:15434` | `postgres:5432`        | `payment-service`                                   |
+| `kafka`                  | `toxiproxy:19092` | `kafka:29094`          | `user`, `order`, `payment`, `notification` services |
+
+Kafka clients only bootstrap through the address they are given, then connect to the address the broker advertises, so the broker has a `TOXIPROXY` listener (`kafka:29094`) advertised as `toxiproxy:19092`; `kafka:29092` stays for `kafka-init` and the host. Redis and a dead service are faults for `docker pause` / `docker kill`, not Toxiproxy.
+
+A scenario injects faults with `lib/toxics.ts`, typically from a second executor that starts after the baseline:
+
+```ts
+addToxic('order-product', {
+  name: 'slow',
+  type: 'latency',
+  attributes: { latency: 1500 },
+})
+setProxyEnabled('order-product', false) // the dependency is down: connections refused
+clearFaults() // every toxic removed, every proxy enabled
+```
+
+With a 1,500 ms latency toxic on `order-product`, a checkout went from 26 ms to 1,519 ms; with the proxy disabled it failed with 500 in 8 ms. By hand: `curl -X POST localhost:9474/reset`, `curl localhost:9474/proxies`.
 
 ## Seed knobs
 
@@ -133,7 +193,7 @@ Everything derives from an integer index, as in `seed/common.sql`:
 
 Machine: 12 cores, 14 GB RAM, Docker on a local SSD. Postgres runs with its defaults except `max_wal_size=16GB`.
 
-`SEED_SCALE=1`, run on 2026-10-30, the four database scripts in parallel:
+`SEED_SCALE=1`, run on 2026-10-30, the four database scripts in parallel, before the [limits](#limits-and-faults) existed (Postgres now has 2 CPUs, so a reseed will take longer; re-time it then):
 
 | Database     | Seed duration | On disk | Largest relations (total / heap / indexes)                                |
 | ------------ | ------------- | ------- | ------------------------------------------------------------------------- |
