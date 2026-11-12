@@ -1,0 +1,33 @@
+{
+  "name": "@ecommerce/service",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ecommerce/auth": "workspace:*",
+    "@ecommerce/docs": "workspace:*",
+    "@ecommerce/http": "workspace:*",
+    "@ecommerce/logger": "workspace:*",
+    "@ecommerce/metrics": "workspace:*",
+    "fastify": "^5.3.3",
+    "fastify-type-provider-zod": "^4.0.2",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.9"
+  }
+}
