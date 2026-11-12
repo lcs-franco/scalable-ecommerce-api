@@ -1,8 +1,11 @@
-# Limits: see "Limits and faults" in README.md
+# Limits and proxy routing: see "Limits and faults" in README.md. Seeds keep talking to Postgres directly
 
 x-node-limits: &node-limits
   cpus: 0.5
   mem_limit: 256m
+
+x-proxied: &proxied
+  toxiproxy: { condition: service_healthy }
 
 services:
   api-gateway:
@@ -11,18 +14,35 @@ services:
 
   user-service:
     <<: *node-limits
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ecommerce}:${POSTGRES_PASSWORD:-ecommerce_dev}@toxiproxy:15431/user_db
+      KAFKA_BROKER: toxiproxy:19092
+    depends_on: *proxied
 
   product-service:
     <<: *node-limits
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ecommerce}:${POSTGRES_PASSWORD:-ecommerce_dev}@toxiproxy:15432/product_db
+    depends_on: *proxied
 
   cart-service:
     <<: *node-limits
 
   order-service:
     <<: *node-limits
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ecommerce}:${POSTGRES_PASSWORD:-ecommerce_dev}@toxiproxy:15433/order_db
+      KAFKA_BROKER: toxiproxy:19092
+      CART_SERVICE_URL: http://toxiproxy:13003
+      PRODUCT_SERVICE_URL: http://toxiproxy:13002
+    depends_on: *proxied
 
   payment-service:
     <<: *node-limits
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ecommerce}:${POSTGRES_PASSWORD:-ecommerce_dev}@toxiproxy:15434/payment_db
+      KAFKA_BROKER: toxiproxy:19092
+    depends_on: *proxied
 
   user-seed: *node-limits
 
@@ -30,3 +50,6 @@ services:
 
   notification-service:
     <<: *node-limits
+    environment:
+      KAFKA_BROKER: toxiproxy:19092
+    depends_on: *proxied

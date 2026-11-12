@@ -16,6 +16,9 @@ query() {
 since=$(query -d order_db -c 'SELECT now()')
 hot_initial=$(query -d product_db -c "SELECT stock FROM products WHERE id = md5('product:0')::uuid")
 
+# A crashed attack must not leak its faults into this one
+curl -fsS -X POST "http://$($compose port toxiproxy 8474)/reset"
+
 mkdir -p results
 
 # k6 tolerates Prometheus being down but logs an error on every flush

@@ -1,0 +1,18 @@
+# Faults on the dependency paths an attack targets; proxies in toxiproxy.json, toxics toggled through lib/toxics.ts
+services:
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.12.0
+    command: ['-host=0.0.0.0', '-config=/config/toxiproxy.json']
+    ports:
+      - ${TOXIPROXY_PORT:-8474}:8474
+    volumes:
+      - ./toxiproxy.json:/config/toxiproxy.json:ro
+    healthcheck:
+      test: ['CMD', '/toxiproxy-cli', 'list']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: on-failure
+    # In the request path of every proxied call: it must never be the bottleneck
+    cpus: 1
+    mem_limit: 128m

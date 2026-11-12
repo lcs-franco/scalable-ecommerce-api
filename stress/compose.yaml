@@ -6,6 +6,8 @@ include:
     env_file: [../.env, stress.env]
   - path: [../docker/services.yaml, services.override.yaml]
     env_file: [../.env, stress.env]
+  - path: toxiproxy.yaml
+    env_file: [../.env, stress.env]
   - path: seed.yaml
     env_file: [../.env, stress.env]
   - path: ../docker/observability.yaml

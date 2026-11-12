@@ -1,0 +1,44 @@
+[
+  {
+    "name": "order-product",
+    "listen": "0.0.0.0:13002",
+    "upstream": "product-service:3002",
+    "enabled": true
+  },
+  {
+    "name": "order-cart",
+    "listen": "0.0.0.0:13003",
+    "upstream": "cart-service:3003",
+    "enabled": true
+  },
+  {
+    "name": "user-postgres",
+    "listen": "0.0.0.0:15431",
+    "upstream": "postgres:5432",
+    "enabled": true
+  },
+  {
+    "name": "product-postgres",
+    "listen": "0.0.0.0:15432",
+    "upstream": "postgres:5432",
+    "enabled": true
+  },
+  {
+    "name": "order-postgres",
+    "listen": "0.0.0.0:15433",
+    "upstream": "postgres:5432",
+    "enabled": true
+  },
+  {
+    "name": "payment-postgres",
+    "listen": "0.0.0.0:15434",
+    "upstream": "postgres:5432",
+    "enabled": true
+  },
+  {
+    "name": "kafka",
+    "listen": "0.0.0.0:19092",
+    "upstream": "kafka:29094",
+    "enabled": true
+  }
+]

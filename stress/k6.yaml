@@ -8,6 +8,7 @@ services:
       - ./:/stress
     environment:
       BASE_URL: http://api-gateway:3000
+      TOXIPROXY_URL: http://toxiproxy:8474
       K6_USERS: ${K6_USERS:-200}
       SEED_SCALE: ${SEED_SCALE:-1}
       SEED_PRODUCTS: ${SEED_PRODUCTS:-}
