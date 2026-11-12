@@ -6,6 +6,7 @@ export {
   type ProcessedOutcome,
 } from './consumer.js'
 export { EVENT_ID_HEADER } from './headers.js'
+export { createKafka, type ICreateKafkaOptions } from './kafka.js'
 export { createKafkaLogCreator, type IKafkaLogTarget } from './kafka-log.js'
 export { createProducer } from './producer.js'
 export {
